@@ -1,4 +1,4 @@
-### [MCP 模型上下文协议](https://aiweb3.school/zh/handbook/ai/mcp)
+# [MCP 模型上下文协议](https://aiweb3.school/zh/handbook/ai/mcp)
 
 > 约 5 分钟阅读 · 2026-05-12
 

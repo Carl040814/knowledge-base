@@ -1,4 +1,4 @@
-### [Vibe Coding 氛围编程](https://aiweb3.school/zh/handbook/ai/vibe-coding)
+# [Vibe Coding 氛围编程](https://aiweb3.school/zh/handbook/ai/vibe-coding)
 
 > 约 7 分钟阅读 · 2026-05-12
 

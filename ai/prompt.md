@@ -1,4 +1,4 @@
-### [Prompt 提示词](https://aiweb3.school/zh/handbook/ai/prompt)
+# [Prompt 提示词](https://aiweb3.school/zh/handbook/ai/prompt)
 
 > 约 6 分钟阅读 · 2026-05-12
 

@@ -1,6 +1,6 @@
-### AI × Web3 School 课程概览
+# AI × Web3 School 课程概览
 
-**来源**：[Handbook 首页](https://aiweb3.school/zh/handbook/)
+**来源**：[Handbook 首页](https://aiweb3.school/zh/handbook/) | [AI 基础章节总览](index.md)
 
 AI x Web3 不是把两个 buzzword 拼在一起。一个真实系统往往会同时涉及：模型理解任务、Agent 执行流程、钱包权限管理、链上交易审计、支付身份治理、隐私安全可验证性。
 

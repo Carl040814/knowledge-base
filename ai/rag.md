@@ -1,4 +1,4 @@
-### [RAG 检索增强生成](https://aiweb3.school/zh/handbook/ai/rag)
+# [RAG 检索增强生成](https://aiweb3.school/zh/handbook/ai/rag)
 
 > 约 5 分钟阅读 · 2026-05-12
 
