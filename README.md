@@ -8,6 +8,7 @@
 
 - [AI / 机器学习](ai/index.md) — 12 章
 - [Web3 / 区块链](web3/index.md) — 10 章
+- [AI × Web3 Bridge](bridge/index.md) — 1/15 章
 - [编程 / 开发](programming/index.md)
 - [工具 / 效率](tools/index.md)
 - [语言学习](language/index.md)
@@ -46,6 +47,13 @@
 | 预言机 | [web3/oracle.md](web3/oracle.md) | Price Feed、Data Feed、Oracle Risk、AI Oracle |
 | 索引 | [web3/indexing.md](web3/indexing.md) | Event Indexing、Subgraph、RPC、Data Pipeline |
 | 安全 | [web3/security.md](web3/security.md) | Reentrancy、Access Control、Audit、Simulation、Monitoring |
+
+## AI × Web3 Bridge
+
+| 章节 | 文件 | 说明 |
+|------|------|------|
+| 最小交叉实验 | [bridge/cross-experiment.md](bridge/cross-experiment.md) | AI 拆解 Sepolia 链上交易，字段→概念映射 |
+| 其余 14 章 | [bridge/index.md](bridge/index.md) | 链感知上下文、Web3 工具调用、Agent 钱包、机器支付… 待学习 |
 
 ## 编程 / 开发
 
