@@ -23,7 +23,11 @@
 
 ## [Web3 / 区块链](web3/index.md)
 
-（待填写）
+| 章节 | 说明 |
+|------|------|
+| [钱包（Wallet）](web3/index.md#钱包wallet) | EOA、助记词、交易、Gas、区块浏览器、三类交互风险 |
+| [智能合约（Smart Contract）](web3/index.md#智能合约smart-contract) | Solidity、EVM、ABI、最小合约示例、合约 vs 后端 |
+| [网络（Network）](web3/index.md#网络network) | L1/L2、测试网、桥、RPC |
 
 ## [编程 / 开发](programming/index.md)
 
