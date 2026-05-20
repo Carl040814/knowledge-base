@@ -2,3 +2,6 @@
 .obsidian/workspace.json
 .obsidian/workspace.json.bak
 .obsidian/workspace-mobile.json
+# temp files
+_split.py
+_find.py
