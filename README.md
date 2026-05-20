@@ -4,7 +4,7 @@
 >
 > 建于：2026-05-19
 
-## AI / 机器学习
+## [AI / 机器学习](ai/index.md)
 
 | 章节 | 说明 |
 |------|------|
@@ -21,22 +21,22 @@
 | [Fine-tuning 微调](ai/fine-tuning.md) | SFT、LoRA、PEFT 与适用场景 |
 | [Inference 推理服务](ai/inference.md) | API、Local、Quantization、Serving |
 
-## Web3 / 区块链
+## [Web3 / 区块链](web3/index.md)
 
-[正在建设中](web3/index.md)
+（待填写）
 
-## 编程 / 开发
+## [编程 / 开发](programming/index.md)
 
-[正在建设中](programming/index.md)
+（待填写）
 
-## 工具 / 效率
+## [工具 / 效率](tools/index.md)
 
-[正在建设中](tools/index.md)
+（待填写）
 
-## 语言学习
+## [语言学习](language/index.md)
 
-[正在建设中](language/index.md)
+（待填写）
 
-## 其他
+## [其他](other/index.md)
 
-[正在建设中](other/index.md)
+（待填写）
