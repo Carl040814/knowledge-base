@@ -39,6 +39,40 @@ AI x Web3 不是把两个 buzzword 拼在一起。一个真实系统往往会同
 3. **AI × Web3 Bridge** — Chain-aware Context、Web3 Tool Use、Agent Workflow、Agent Wallet、Machine Payment、Settlement & Escrow、Agent Identity、Agent Trust & Reputation、AI Oracle、Verifiable AI、AI Security、AI Privacy、AI Sovereignty、Governance AI、Decentralized AI
 4. **前沿探索** — Agentic Commerce、Dev Tooling、Wallet / Permission、AI Security、Governance、Open Track
 
+### LLM 大语言模型 — 核心概念
+
+**本质**：基于上下文进行概率生成，预测最合理的下一个 token 序列。
+
+- **Token**：最小读取单位 ≈ 0.75 英文词 / 1 中文字
+- **Embedding**：文字 → 数学向量，表达语义相似度
+- **Transformer**：核心架构，"注意力机制"让模型关注重要输入
+- **Hallucination（幻觉）**：自信编造不存在的信息，需外部核实
+
+**擅长**：语言理解、代码生成、推理、创意
+**不擅长**：精确事实记忆、确定计算、跨会话状态保持
+
+### Prompt → Workflow → Agent 区别
+
+| 层次 | 决策者 | 路径 | 风险 |
+|------|--------|------|------|
+| Prompt | 人 | 单次问答 | 低 |
+| Workflow | 预定流程 | 固定路径，模型是节点 | 中 |
+| Agent | 模型自主 | 动态规划+工具调用 | 高 |
+
+### Agent 核心技术组件
+
+- **Tool Calling**：模型输出结构化请求 → 框架执行 → 回传结果
+- **MCP（模型上下文协议）**：LLM 与外部工具的统一连接协议
+- **Skills**：可复用的高层指令集，支持自动发现和动态生成
+- **Tracing**：可视化 agent 执行链
+- **Guardrails**：输入输出验证规则，不符合则中止
+- **Handoff**：子任务完成后移交控制权
+- **错误恢复**：执行失败时的重试、回退和人工介入
+- **长期记忆**：跨 session 存储与召回
+
+**什么时候用 Agent？** 目标开放、需多工具协作、中间结果决定下一步、需跨会话记忆。
+**什么时候不适合？** 一次性问答用 Prompt、流程固定用脚本、高合规要求用人工审核节点。
+
 ## Web3 / 区块链
 
 <!-- TODO -->
