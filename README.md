@@ -53,7 +53,11 @@
 | 章节 | 文件 | 说明 |
 |------|------|------|
 | 最小交叉实验 | [bridge/cross-experiment.md](bridge/cross-experiment.md) | AI 拆解 Sepolia 链上交易，字段→概念映射 |
-| 其余 14 章 | [bridge/index.md](bridge/index.md) | 链感知上下文、Web3 工具调用、Agent 钱包、机器支付… 待学习 |
+| 链感知上下文 | [bridge/chain-aware-context.md](bridge/chain-aware-context.md) | Chain-aware Context：On-chain Data、Citation |
+| Web3 工具调用 | [bridge/web3-tool-use.md](bridge/web3-tool-use.md) | RPC/Contract Read/Write、Wallet/DeFi Tool、权限分层 |
+| Agent 工作流 | [bridge/agent-workflow.md](bridge/agent-workflow.md) | Task Graph、State Machine、Human-in-the-loop、Trace |
+| Agent 钱包 | [bridge/agent-wallet.md](bridge/agent-wallet.md) | Smart Account、Session Key、Policy、Guard、Simulation |
+| 其余 10 章 | [bridge/index.md](bridge/index.md) | 机器支付、Agent 身份、AI Oracle… 待学习 |
 
 ## 编程 / 开发
 
