@@ -10,6 +10,7 @@
 - [Web3 / 区块链](web3/index.md) — 10 章
 - [AI × Web3 Bridge](bridge/index.md) — 15/15 章 ✅
 - [前沿探索](frontier/index.md) — 6 章
+- [EPF 协议层深度](epf/index.md) — 72 文件
 - [编程 / 开发](programming/index.md)
 - [工具 / 效率](tools/index.md)
 - [语言学习](language/index.md)
