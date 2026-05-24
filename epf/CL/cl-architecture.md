@@ -1,201 +1,165 @@
-# Consensus Layer (CL) architecture
+# 共识层 (Consensus Layer, CL) 架构
 
-> Many blockchain consensus protocols are _forkful_. Forkful chains use a fork choice rule, and sometimes undergo reorganisations.
+> 许多区块链共识协议是_有分叉的 (forkful)_。有分叉的链使用分叉选择规则 (fork choice rule)，有时会发生重组 (reorganisation)。
 >
-> Ethereum's consensus protocol combines two separate consensus protocols. _LMD GHOST_ essentially provides liveness. _Casper FFG_ provides finality. Together they are known as _Gasper_.
+> 以太坊的共识协议结合了两个独立的共识协议。_LMD GHOST_ 基本上提供活性 (liveness)。_Casper FFG_ 提供最终性 (finality)。它们一起被称为 _Gasper_。
 >
-> In a _live_ protocol, something good always happens. In a _safe_ protocol, nothing bad ever happens. No practical protocol can be always safe and always live.
+> 在一个_活跃的 (live)_ 协议中，好的事情总是会发生。在一个_安全的 (safe)_ 协议中，坏事永远不会发生。没有任何实际协议能够始终安全且始终活跃。
 
-## Fork-choice Mechanism
+## 分叉选择机制 (Fork-choice Mechanism)
 
-As described in [BFT](/wiki/CL/overview.md?id=byzantine-fault-tolerance-bft-and-byzantine-generals39-problem), for various reasons - like network delays, outages, out-of-order messages, or malicious behavior — nodes in the network can have different views of the network's state. Eventually, we want every honest node to agree on an identical, linear history and a common view of the system's state. The protocol's fork choice rule is what helps achieve this agreement.
+如 [BFT](/wiki/CL/overview.md?id=byzantine-fault-tolerance-bft-and-byzantine-generals39-problem) 中所述，由于各种原因——如网络延迟、宕机、消息乱序或恶意行为——网络中的节点可能对网络状态有不同的视图。最终，我们希望每个诚实节点都就一个完全相同的线性历史和系统状态的共同视图达成一致。协议的分叉选择规则正是帮助实现这一一致性的手段。
 
-#### Block Tree
-Given a block tree and decision criteria based on a node's local view of the network, the fork choice rule is designed to select the branch that is most likely to become the final, linear, canonical chain. It chooses the branch least likely to be pruned out as nodes converge on a common view.
+#### 区块树 (Block Tree)
+给定一个区块树和基于节点对网络的本地视图的决策标准，分叉选择规则旨在选择最有可能成为最终的、线性的、规范的链的分支。它选择最不可能在节点收敛到共同视图时被修剪掉的分支。
 
 <a id="img_blocktree"></a>
 
-<figure class="diagram" style="text-align:center; width:95%">
+![Diagram for Block Tree](https://epf.wiki/images/cl/blocktree.svg)
+*分叉选择规则从候选者中挑选一个头部区块 (head block)。头部区块标识了一条唯一的、回到创世区块的线性区块链。*
 
-![Diagram for Block Tree](../../images/cl/blocktree.svg)
+#### 分叉选择规则 (Fork choice rules)
 
-<figcaption>
+分叉选择规则通过选择分支顶端的区块（称为头部区块, head block）来隐式地选择一个分支。对于任何正确的节点，任何分叉选择的第一条规则是，所选区块必须根据协议规则是有效的，并且其所有祖先也必须有效。任何无效区块都会被忽略，建立在无效区块之上的区块也是无效的。
 
-_The fork choice rule picks a head block from the candidates. The head block identifies a unique linear blockchain back to the Genesis block._
+以下是几种不同分叉选择规则的示例：
 
-</figcaption>
-</figure>
+- **工作量证明 (Proof-of-Work)**：在以太坊和比特币中，使用"最重链规则 (heaviest chain rule)"（有时称为"最长链"，尽管严格来说并不准确）。头部区块是累积完成最多"工作量"的链的顶端。
+> 请注意，与普遍看法相反，以太坊的工作量证明协议在其分叉选择中[并未使用](https://ethereum.stackexchange.com/questions/38121/why-did-ethereum-abandon-the-ghost-protocol/50693#50693)任何形式的 GHOST。这个误解非常顽固，可能源于[以太坊白皮书](https://ethereum.org/en/whitepaper/#modified-ghost-implementation)。最终当 Vitalik 被问及此事时，他确认虽然 GHOST 在 PoW 下曾被计划，但由于对某些未指明的攻击的担忧，从未被实现。最重链规则更简单且经过充分测试，运行良好。
+- **Casper FFG (权益证明, Proof-of-Stake)**：在以太坊的 PoS Casper FFG 协议中，分叉选择规则是"跟随包含**最大高度**的已证明合理检查点 (justified checkpoint) 的链"，并且永不回滚已最终确定的区块。
+- **LMD GHOST (权益证明, Proof-of-Stake)**：在以太坊的 PoS LMD GHOST 协议中，分叉选择规则是取"最贪婪最重观察子树 (Greediest Heaviest Observed SubTree)"。它涉及计算验证者对区块及其后代区块的累积投票。它还应用与 Casper FFG 相同的规则。
 
-#### Fork choice rules
+这些分叉选择规则中的每一个都为一个区块分配一个数值分数。获胜的区块，即头部区块，具有最高的分数。目标是所有正确节点在看到某个区块时，都会同意它是头部并跟随其分支。这样，所有正确节点最终将就一条回到创世的单一规范链达成一致。
 
-The fork choice rule implicitly selects a branch by choosing a block at the branch's tip, called the head block. For any correct node, the first rule of any fork choice is that the chosen block must be valid according to protocol rules, and all its ancestors must also be valid. Any invalid block is ignored, and blocks built on an invalid block are also invalid.
+#### 重组 (Reorgs) 与回滚 (Reversion)
 
-There are several examples of different fork choice rules:
+当节点收到新的投票（以及在权益证明中对区块的新投票）时，它会用这些新信息重新评估分叉选择规则。通常，新区块将是当前头部区块的子区块，并成为新的头部区块。
 
-- **Proof-of-work**: In Ethereum and Bitcoin, the "heaviest chain rule" (sometimes called "longest chain", though not strictly accurate) is used. The head block is the tip of the chain with the most cumulative "work" done.
-> Note that contrary to popular belief, Ethereum's Proof-of-work protocol [did not use](https://ethereum.stackexchange.com/questions/38121/why-did-ethereum-abandon-the-ghost-protocol/50693#50693) any form of GHOST in its fork choice. This misconception is very persistent, probably due to the [Ethereum Whitepaper](https://ethereum.org/en/whitepaper/#modified-ghost-implementation). Eventually when Vitalik was asked about it, he confirmed that although GHOST had been planned under PoW it was never implemented due to concerns about some unspecified attacks. The heaviest chain rule was simpler and well tested. It worked fine.
-- **Casper FFG (Proof-of-Stake)**: In Ethereum's PoS Casper FFG protocol, the fork-choice rule is to "follow the chain containing the justified checkpoint of the **greatest height**" and never revert a finalized block.
-- **LMD GHOST (Proof-of-Stake)**: In Ethereum's PoS LMD GHOST protocol, the fork-choice rule is to take the "Greediest Heaviest Observed SubTree". It involves counting accumulated votes from validators for blocks and their descendent blocks. It also applies the same rule as Casper FFG.
+然而，有时新区块可能是区块树中不同区块的后代。如果节点没有新区块的父区块，它会向对等节点请求该父区块以及任何其他缺失的区块。
 
-Each of these fork choice rules assigns a numeric score to a block. The winning block, or head block, has the highest score. The goal is that all correct nodes, when they see a certain block, will agree that it is the head and follow its branch. This way, all correct nodes will eventually agree on a single canonical chain that goes back to Genesis.
+在更新后的区块树上运行分叉选择规则可能会显示新的头部区块位于与前一个头部区块不同的分支上。当这种情况发生时，节点必须执行重组 (reorg, reorganisation)。这意味着它将移除（回滚, revert）之前包含的区块，并采用新头部分支上的区块。
 
-#### Reorgs and Reversion
-
-As a node receives new votes (and new votes for blocks in Proof-of-stake), it re-evaluates the fork choice rule with this new information. Usually, a new block will be a child of the current head block, and it will become the new head block.
-
-Sometimes, however, the new block might be a descendant of a different block in the block tree. If the node doesn't have the parent block of the new block, it will ask its peers for it and any other missing blocks.
-
-Running the fork choice rule on the updated block tree might show that the new head block is on a different branch than the previous head block. When this happens, the node must perform a reorg (reorganisation). This means it will remove (revert) blocks it previously included and adopt the blocks on the new head's branch.
-
-For example, if a node has blocks $A, B, D, E,$ and $F$ in its chain, and it views $F$ as the head block, it knows about block $C$ but it does not appear in its view of the chain; it is on a side branch.
+例如，如果一个节点的链中有区块 $A, B, D, E,$ 和 $F$，并将 $F$ 视为头部区块，它知道区块 $C$，但 $C$ 不出现在其对链的视图中；它在侧分支上。
 
 <a id="img_reorg0"></a>
 
-<figure class="diagram" style="text-align:center">
+![Diagram for Reorg-0](https://epf.wiki/images/cl/reorg-0.svg)
+*此时，节点认为区块 $F$ 是最佳头部，因此其链是区块 $[A \leftarrow B \leftarrow D \leftarrow E \leftarrow F]$*
 
-![Diagram for Reorg-0](../../images/cl/reorg-0.svg)
+当节点稍后收到区块 $G$（它建立在区块 $C$ 上而非当前头部区块 $F$ 上）时，它必须决定 $G$ 是否应该成为新的头部。仅作为示例，如果分叉选择规则说 $G$ 是更好的头部区块，节点将回滚区块 $D, E,$ 和 $F$。它将它们从链中移除，就像它们从未被收到过一样，并回到区块 $B$ 之后的状态。
 
-<figcaption>
-
-_At this point, the node believes that block $F$ is the best head, therefore its chain is blocks $[A \leftarrow B \leftarrow D \leftarrow E \leftarrow F]$_
-
-</figcaption>
-</figure>
-
-When the node later receives block $G$, which is built on block $C$, not on its current head block $F$, it must decide if $G$ should be the new head. Just for example, If the fork choice rule says $G$ is the better head block, the node will revert blocks $D, E,$ and $F$. It will remove them from its chain, as if they were never received, and go back to the state after block $B$.
-
-Then, the node will add blocks $C$ and $G$ to its chain and process them. After this reorg, the node's chain will be $A, B, C,$ and $G$.
+然后，节点将区块 $C$ 和 $G$ 添加到其链中并处理它们。经过这次重组后，节点的链将是 $A, B, C,$ 和 $G$。
 
 <a id="img_reorg1"></a>
 
-<figure class="diagram" style="text-align:center">
+![Diagram for Reorg-1](https://epf.wiki/images/cl/reorg-1.svg)
+*现在节点认为区块 $G$ 是最佳头部，因此其链必须变为区块 $[A \leftarrow B \leftarrow C \leftarrow G]$*
 
-![Diagram for Reorg-1](../../images/cl/reorg-1.svg)
+稍后，也许会出现一个建立在 $F$ 上的区块 $H$，而分叉选择规则说 $H$ 应该是新的头部，节点将再次重组，回滚到区块 $B$ 并重放 $H$ 分支上的区块。
 
-<figcaption>
+由于网络延迟，一两个区块的短期重组是常见的。较长的重组应该很少见，除非链受到攻击或分叉选择规则或其实现中存在 Bug。
 
-_Now the node believes that block $G$ is the best head, therefore its chain must change to the blocks $[A \leftarrow B \leftarrow C \leftarrow G]$_
+### 安全性 (Safety) 与活性 (Liveness)
 
-</figcaption>
-</figure>
+在共识机制中，两个关键概念是安全性和活性。
 
-Later, perhaps, a block $H$ might appear, that's built on $F$, and the fork choice rule says $H$ should be the new head, the node will reorg again, reverting to block $B$ and replaying blocks on $H$'s branch.
+**安全性 (Safety)** 意味着"坏事永远不会发生"，例如防止双重支付 (double-spending) 或最终确定冲突的检查点。它确保一致性 (consistency)，意味着所有诚实节点应始终就区块链的状态达成一致。
 
-Short reorgs of one or two blocks are common due to network delays. Longer reorgs should be rare unless the chain is under attack or there is a bug in the fork choice rule or its implementation.
+**活性 (Liveness)** 意味着"好事最终会发生"，确保区块链始终能够添加新区块，永远不会陷入死锁 (deadlock)。
 
-### Safety and Liveness
+**CAP 定理 (CAP Theorem)** 指出，没有任何分布式系统能够同时提供一致性 (Consistency)、可用性 (Availability) 和分区容忍性 (Partition tolerance)。这意味着我们无法设计一个在通信不可靠时在所有情况下既安全又活跃的系统。
 
-In consensus mechanisms, two key concepts are safety and liveness.
+#### 以太坊优先考虑活性
 
-**Safety** means "nothing bad ever happens," such as preventing double-spending or finalizing conflicting checkpoints. It ensures consistency, meaning all honest nodes should always agree on the state of the blockchain.
+以太坊的共识协议旨在良好的网络条件下同时提供安全性和活性。然而，在网络问题期间它优先考虑活性。在网络分区 (network partition) 中，两侧的节点将继续产生区块，但不会达成最终性（一个安全属性）。如果分区持续存在，每一侧可能最终确定不同的历史，导致两条不可调和、独立的链。
 
-**Liveness** means "something good eventually happens," ensuring the blockchain can always add new blocks and never gets stuck in a deadlock.
+因此，虽然以太坊努力同时实现安全性和活性，但它倾向于确保网络保持活跃并继续处理交易，即使以在严重网络中断期间潜在的安全问题为代价。
 
-**CAP Theorem** states that no distributed system can provide consistency, availability, and partition tolerance simultaneously. This means we can't design a system that is both safe and live under all circumstances when communication is unreliable.
+## 机器中的幽灵
 
-#### Ethereum Prioritizes Liveness
+以太坊的权益证明共识协议结合了两个独立的协议：[LMD GHOST](/wiki/CL/gasper?id=lmd-ghost.md) 和 [Casper FFG](/wiki/CL/gasper?id=casper-ffg.md)。它们一起构成了名为 "Gasper" 的共识协议。关于这两个协议及其如何组合工作的详细信息将在下一节 [Gasper](/wiki/CL/gasper) 中涵盖。
 
-Ethereum’s consensus protocol aims to offer both safety and liveness in good network conditions. However, it prioritizes liveness during network issues. In a network partition, nodes on each side will continue to produce blocks but won't achieve finality (a safety property). If the partition persists, each side may finalize different histories, leading to two irreconcilable, independent chains.
+Gasper 旨在结合 LMD GHOST 和 Casper FFG 的优势。LMD GHOST 提供活性，通过定期产生新区块确保链持续运行。然而，它容易出现分叉，且并非正式安全。另一方面，Casper FFG 通过定期最终确定链来提供安全性，保护其免受长回滚的影响。
 
-Thus, while Ethereum strives for both safety and liveness, it leans towards ensuring the network remains live and continues to process transactions, even at the cost of potential safety issues during severe network disruptions.
+本质上，LMD GHOST 保持链向前移动，而 Casper FFG 通过最终确定区块来确保稳定性。这种组合使以太坊能够优先考虑活性，意味着即使 Casper FFG 无法最终确定区块，链也继续增长。尽管这种组合机制并非总是完美且存在一些复杂性，但它是一个在实际中对以太坊运行良好的实用工程解决方案。
 
-## The Ghosts in the Machine
+## 架构
 
-Ethereum's Proof-of-Stake consensus protocol combines two separate protocols: [LMD GHOST](/wiki/CL/gasper?id=lmd-ghost.md) and [Casper FFG](/wiki/CL/gasper?id=casper-ffg.md). Together, they form the consensus protocol known as "Gasper". Detailed Information about both protocols and how they work in combination are covered in the next section [Gasper](/wiki/CL/gasper).
+以太坊是一个去中心化的节点网络，节点通过对等 (peer-to-peer) 连接进行通信。这些连接由运行以太坊客户端软件的计算机形成。
 
-Gasper aims to combine the strengths of both LMD GHOST and Casper FFG. LMD GHOST provides liveness, ensuring the chain keeps running by producing new blocks regularly. However, it is prone to forks and not formally safe. Casper FFG, on the other hand, provides safety by periodically finalizing the chain, protecting it from long reversions.
+![Diagram for Network](https://epf.wiki/images/cl/network.png)
+*节点不需要运行验证者客户端（绿色部分）就能成为网络的一部分，但是要参与共识，需要质押 32 ETH 并运行验证者客户端。*
 
-In essence, LMD GHOST keeps the chain moving forward, while Casper FFG ensures stability by finalizing blocks. This combination allows Ethereum to prioritize liveness, meaning the chain continues to grow even if Casper FFG can't finalize blocks. Although this combined mechanism isn't always perfect and has some complexities, it is a practical engineering solution that works well in practice for Ethereum.
+### 共识层的组件
 
-## Architecture
+- **信标节点 (Beacon Node)**：信标节点使用客户端软件来协调以太坊的权益证明共识。示例包括 Prysm、Teku、Lighthouse 和 Nimbus。信标节点与其他信标节点、本地执行节点以及（可选）本地验证者进行通信。
 
-Ethereum is a decentralized network of nodes that communicate via peer-to-peer connections. These connections are formed by computers running Ethereum's client software.
+- **验证者 (Validator)**：验证者客户端是允许人们在以太坊共识层中质押 32 ETH 的软件。验证者在权益证明系统中提议区块，取代了工作量证明的矿工。验证者仅与本地信标节点通信，信标节点向其发出指令并将其工作广播到网络。
 
-<figure class="diagram" style="text-align:center">
+托管现实世界应用的主要以太坊网络称为以太坊主网 (Ethereum Mainnet)。以太坊主网是以太坊的实时生产实例，铸造和管理真实的以太坊 (ETH) 并持有真实的货币价值。
 
-![Diagram for Network](../../images/cl/network.png)
-
-<figcaption>
-
-_Nodes aren't required to run a validator client (green ones) to be a part of the network, however to take part in consensus one needs to stake 32 ETH and run a validator client._
-
-</figcaption>
-</figure>
-
-### Components of the Consensus Layer
-
-- **Beacon Node**: Beacon nodes use client software to coordinate Ethereum's proof-of-stake consensus. Examples include Prysm, Teku, Lighthouse, and Nimbus. Beacon nodes communicate with other beacon nodes, a local execution node, and optionally, a local validator.
-
-- **Validator**: Validator client is the software that allows people to stake 32 ETH in Ethereum's consensus layer. Validators propose blocks in the Proof-of-Stake system, which replaced Proof-of-work miners. Validators communicate only with a local beacon node, which instructs them and broadcasts their work to the network.
-
-The main Ethereum network hosting real-world applications is called Ethereum Mainnet. Ethereum Mainnet is the live, production instance of Ethereum that mints and manages real Ethereum (ETH) and holds real monetary value.
-
-There are also test networks that mint and manage test Ethereum for developers, node runners, and validators to test new functionality before using real ETH on Mainnet. Each Ethereum network has two layers: the execution layer (EL) and the consensus layer (CL). Every Ethereum node contains software for both layers: execution-layer client software (like Nethermind, Besu, Geth, and Erigon) and consensus-layer client software (like Prysm, Teku, Lighthouse, Nimbus, and Lodestar).
+还有测试网络，为开发者、节点运行者和验证者铸造和管理测试以太坊，以便在在主网上使用真实 ETH 之前测试新功能。每个以太坊网络都有两层：执行层 (Execution Layer, EL) 和共识层 (Consensus Layer, CL)。每个以太坊节点都包含两层的软件：执行层客户端软件（如 Nethermind、Besu、Geth 和 Erigon）和共识层客户端软件（如 Prysm、Teku、Lighthouse、Nimbus 和 Lodestar）。
 
 <a id="img_node-layers"></a>
 
-<figure class="diagram" style="width: 80%;text-align:center">
+![Diagram for CL](https://epf.wiki/images/cl/cl.png)
 
-![Diagram for CL](../../images/cl/cl.png)
+**共识层**负责维护共识链（信标链, beacon chain）并处理从其他对等节点接收的共识区块（信标区块, beacon block）和证明 (attestation)。**共识客户端**参与一个单独的[对等网络](/wiki/CL/cl-networking.md)，该网络具有与执行客户端不同的规范。它们需要参与区块 Gossip 协议 (block gossip)，以从对等节点接收新区块，并在轮到它们提议时广播区块。
 
-</figure>
+EL 和 CL 客户端并行运行，需要连接以进行通信。共识客户端向执行客户端提供指令，执行客户端将交易包传递给共识客户端以包含在信标区块中。通信是通过 **Engine-API** 使用本地 RPC 连接实现的。它们共享一个 [ENR](/wiki/CL/cl-networking?id=enr-ethereum-node-records)，每个客户端有单独的密钥（eth1 密钥和 eth2 密钥）。
 
-**Consensus Layer** is responsible for maintaining consensus chain (beacon chain) and processing the consensus blocks (beacon blocks) and attestations received from other peers. **Consensus clients** participate in a separate [peer-to-peer network](/wiki/CL/cl-networking.md) with a different specification from execution clients. They need to participate in block gossip to receive new blocks from peers and broadcast blocks when it's their turn to propose.
+### 控制流
 
-Both EL and CL clients run in parallel and need to be connected for communication. The consensus client provides instructions to the execution client, and the execution client passes transaction bundles to the consensus client to include in Beacon blocks. Communication is achieved using a local RPC connection via the **Engine-API**. They share an [ENR](/wiki/CL/cl-networking?id=enr-ethereum-node-records) with separate keys for each client (eth1 key and eth2 key).
+**当共识客户端不是区块生产者时：**
+1. 通过区块 Gossip 协议接收一个区块。
+2. 预验证该区块。
+3. 将区块中的交易作为执行负载 (execution payload) 发送到执行层。
+4. 执行层执行交易并验证区块状态。
+5. 执行层将验证数据发送回共识层。
+6. 共识层将区块添加到其区块链中并对其进行证明，在网络上广播证明。
 
-### Control Flow
-
-**When the consensus client is not the block producer:**
-1. Receives a block via the block gossip protocol.
-2. Pre-validates the block.
-3. Sends transactions in the block to the execution layer as an execution payload.
-4. Execution layer executes transactions and validates the block state.
-5. Execution layer sends validation data back to the consensus layer.
-6. Consensus layer adds the block to its blockchain and attests to it, broadcasting the attestation over the network.
-
-**When the consensus client is the block producer:**
-1. Receives notice of being the next block producer.
-2. Calls the create block method in the execution client.
-3. Execution layer accesses the transaction mempool.
-4. Execution client bundles transactions into a block, executes them, and generates a block hash.
-5. Consensus client adds transactions and block hash to the beacon block.
-6. Consensus client broadcasts the block over the block gossip protocol.
-7. Other clients validate the block and attest to it.
-8. Once attested by sufficient validators, the block is added to the head of the chain, justified, and finalized.
+**当共识客户端是区块生产者时：**
+1. 收到成为下一个区块生产者的通知。
+2. 调用执行客户端中的创建区块方法。
+3. 执行层访问交易内存池 (mempool)。
+4. 执行客户端将交易打包成区块，执行它们，并生成区块哈希。
+5. 共识客户端将交易和区块哈希添加到信标区块中。
+6. 共识客户端通过区块 Gossip 协议广播该区块。
+7. 其他客户端验证该区块并对其进行证明。
+8. 一旦被足够多的验证者证明，该区块就被添加到链的头部，变为已证明合理 (justified) 并最终确定 (finalized)。
 
 
-### State Transitions
+### 状态转换 (State Transitions)
 
-The state transition function is essential in blockchains. Each node maintains a state that reflects its view of the world.
+状态转换函数 (state transition function) 在区块链中至关重要。每个节点维护一个反映其对世界视图的状态。
 
-Nodes update their state by applying blocks in order using a "state transition function". This function is "pure", meaning its output depends only on the input and has no side effects. Thus, if every node starts with the same state (Genesis state) and applies the same blocks, they all end up with the same state. If they don't, there's a consensus failure.
+节点通过按顺序使用"状态转换函数"应用区块来更新其状态。此函数是"纯 (pure)"的，意味着其输出仅取决于输入且没有副作用。因此，如果每个节点从相同的状态（创世状态, Genesis state）开始并应用相同的区块，它们最终都会得到相同的状态。如果它们没有，那就是共识失败。
 
-If $S$ is a beacon state and $B$ a beacon block, the state transition function $f$ is:
+如果 $S$ 是一个信标状态 (beacon state)，$B$ 是一个信标区块 (beacon block)，则状态转换函数 $f$ 为：
 
-$$S' \equiv f(S, B)$$
+$$S' \\equiv f(S, B)$$
 
-Here, $S$ is the pre-state and $S'$ is the post-state. The function $f$ is iterated with each new block to update the state.
+这里，$S$ 是前状态 (pre-state)，$S'$ 是后状态 (post-state)。函数 $f$ 随着每个新区块迭代更新状态。
 
-### Beacon Chain State Transitions
+### 信标链状态转换
 
-Unlike the block-driven Proof-of-work, the beacon chain is slot-driven. State updates depend on slot progress, regardless of block presence.
+与区块驱动的工作量证明不同，信标链是时隙驱动的。状态更新取决于时隙的推进，无论是否存在区块。
 
-The beacon chain's state transition function includes:
+信标链的状态转换函数包括：
 
-1. **Per-slot transition**: $S' \equiv f_s(S)$
-2. **Per-block transition**: $S' \equiv f_b(S, B)$
-3. **Per-epoch transition**: $S' \equiv f_e(S)$
+1. **每时隙转换 (Per-slot transition)**：$S' \\equiv f_s(S)$
+2. **每区块转换 (Per-block transition)**：$S' \\equiv f_b(S, B)$
+3. **每纪元转换 (Per-epoch transition)**：$S' \\equiv f_e(S)$
 
-Each function updates the chain at specific times, as defined in the beacon chain specification.
+每个函数在特定时间更新链，如信标链规范中所定义。
 
-### Validity Conditions
+### 有效性条件 (Validity Conditions)
 
-The post-state from a pre-state and a signed block is `state_transition(state, signed_block)`. Transitions causing unhandled exceptions (e.g., failed asserts or out-of-range accesses) or uint64 overflows/underflows are invalid.
+从前状态和一个签名区块得到的后状态是 `state_transition(state, signed_block)`。触发未处理异常（例如失败的 assert 或越界列表访问）或 uint64 溢出/下溢的转换被视为无效。
 
-### Beacon chain state transition function
+### 信标链状态转换函数
 
-The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
+与前状态 `state` 和签名区块 `signed_block` 对应的后状态定义为 `state_transition(state, signed_block)`。触发未处理异常的状态转换（例如失败的 `assert` 或越界列表访问）被视为无效。导致 `uint64` 溢出或下溢的状态转换也被视为无效。
 
 ```python
 def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> None:
@@ -231,7 +195,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
 ```
 
 
-## Resources
+## 资源
 
 - Vitalik Buterin, ["Parametrizing Casper: the decentralization/finality time/overhead tradeoff"](https://medium.com/@VitalikButerin/parametrizing-casper-the-decentralization-finality-time-overhead-tradeoff-3f2011672735)
 - [Engine API spec](https://hackmd.io/@n0ble/consensus_api_design_space)

@@ -1,42 +1,45 @@
 # DevP2P
 
-This section will cover the networking protocol used by the Execution Layer (EL).
-First, as it is referred in the [networking section](../dev/cs-resources.md?id=networking), focusing on the transport layer, the two protocols used by DevP2P are TCP (Transmission Control Protocol) and UDP (User Datagram Protocol).
-Both protocols are used to send data over the internet, but they have different characteristics. Just as Tanenbaum points it out (2021),TCP is a connection-oriented protocol, which means that it establishes a connection between the sender and the receiver before sending data.
-It is reliable because it ensures that the data is delivered in the correct order and without errors. UDP is a connectionless protocol, which means that it does not establish a connection before sending data.
-It is faster than TCP because it does not have to establish a connection before sending data, but it is less reliable because it does not ensure that the data is delivered in the correct order or without errors.
+本节将涵盖执行层 (Execution Layer, EL) 所使用的网络协议 (Networking Protocol)。
+首先，如[网络部分 (Networking Section)](../dev/cs-resources.md?id=networking)中所指出的，关注传输层 (Transport Layer)，DevP2P 使用的两种协议是 TCP（传输控制协议 (Transmission Control Protocol)）和 UDP（用户数据报协议 (User Datagram Protocol)）。
+这两种协议都用于在互联网上传输数据，但它们具有不同的特性。正如 Tanenbaum (2021) 所指出的，TCP 是一种面向连接的协议 (Connection-oriented Protocol)，这意味着它在发送数据之前先在发送方和接收方之间建立连接。
+它是可靠的，因为它确保数据按照正确的顺序且无错误地送达。UDP 是一种无连接协议 (Connectionless Protocol)，这意味着它在发送数据之前不建立连接。
+它比 TCP 更快，因为它在发送数据之前不必建立连接，但它不太可靠，因为它不确保数据按正确的顺序或无错误地送达。
 
-![img.png](../../images/el-architecture/tcpudp.png)
+![TCP/UDP 比较](https://epf.wiki/images/el-architecture/tcpudp.png)
 
 
-## EL's networking specs
-As a peer-to-peer network Ethereum implies a series of rules to enable communication between its participant nodes. This section cover an explanation of which are those rules and how they are implemented in the EL.
-Considering each Ethereum node is built upon two different components: the execution client and the consensus client, each one of them has its own peer-to-peer network with its own purpose.
-The execution client is responsible for gossiping transactions, while the consensus client is responsible for gossiping the blocks.
->  There are historical reasons for different CL/EL p2p networks and their underlying technologies. Ethereum was originally built on devp2p as its own custom networking stack. By the time Beacon Chain was created, libp2p was ready for production and adopted there.
-Keeping this in mind, the scope of the EL network covers two different stacks working in parallel: the discovery one, and the information transport itself. 
-The discovery stack is responsible for finding the node peers, while the transport stack is responsible for sending and receiving messages between them.
-Taking the computer networks background into account, then we can infer that the discovery stack relies on the UDP protocol, while the information exchange stack relies on the TCP protocol.
-The reason behind this is that the information exchange requires a reliable connection between the nodes,
-so they can be able to both confirm the connection before sending the data and have a way to ensure that the data is delivered in the correct order and without errors (or at least to have a way to detect and correct them),
-while the discovery process does not require the reliable connection, since it is enough to let other knows that the node is available to communicate.
+## 执行层网络规范 (EL's networking specs)
 
-### Discv protocol (Discovery)
-The process of how the nodes find each other in the network starts with [the hard-coded bootnodes listed in the specification](https://github.com/ethereum/go-ethereum/blob/master/params/bootnodes.go).
-The bootnodes are nodes that are known by all the other nodes in the networks (both Mainnet and testnets), and they are used to bootstrap the discovery peers process.
-Using the Kademlia-like DHT (Distributed Hash Table) algorithm, the nodes are able to find each other in the network by referring to a routing table where the bootnodes are listed.
-The TLDR of the Kademlia is that it is a peer-to-peer protocol that enables nodes to find each other in the network by using a distributed hash table, as Leffew mentioned in his article (2019).
+作为一个点对点 (Peer-to-Peer, P2P) 网络，以太坊暗含了一系列规则，以实现其参与节点之间的通信。本节将介绍这些规则是什么以及它们如何在执行层 (EL) 中实现。
+考虑到每个以太坊节点都构建在两个不同的组件上：执行客户端 (Execution Client) 和共识客户端 (Consensus Client)，它们每一个都有自己的点对点网络，并有其独特用途。
+执行客户端负责传播/广播交易 (Gossiping Transactions)，而共识客户端负责传播/广播区块 (Gossiping Blocks)。
+> 存在不同的 CL/EL P2P 网络及其底层技术是有历史原因的。以太坊最初是构建在 devp2p 作为其自定义网络技术栈基础上的。当信标链 (Beacon Chain) 创建时，libp2p 已经具备生产环境可用性，并被其采纳。
+牢记这一点，执行层 (EL) 网络范围涵盖了两个并行工作的不同技术栈：节点发现技术栈 (Discovery Stack) 以及信息传输技术栈 (Transport Stack) 本身。
+发现栈负责寻找节点对等方 (Node Peers)，而传输栈负责在它们之间发送和接收消息。
+考虑到计算机网络背景，我们可以推断出发现栈依赖于 UDP 协议，而信息交换栈依赖于 TCP 协议。
+这背后的原因在于，信息交换需要节点之间建立可靠的连接，
+以便它们在发送数据之前都能够确认连接，并拥有一种确保数据按正确顺序且无错误送达（或者至少拥有一种检测并纠正错误的方法）的手段，
+而发现过程不需要可靠的连接，因为仅让其他节点知道该节点可进行通信就足够了。
 
-That is to say, the connection process starts with a PING-PONG game where the new node send a PING message to the bootnode, and the bootnode responds with a PONG hashed message.
-If both messages match, then the new node is able to bond with the bootnode. In addition to this, the new node sends a FIND-NEIGHBOURS request to the bootnode, so it can receive a list of neighbours that able to connect with,
-so it can repeat the PING-PONG game with them and bond with them as well.
+### 发现协议 (Discv protocol (Discovery))
 
-![img.png](../../images/el-architecture/peer-discovery.png)
+节点在网络中如何寻找彼此的过程，始于[规范中列出的硬编码引导节点 (Hard-coded Bootnodes)](https://github.com/ethereum/go-ethereum/blob/master/params/bootnodes.go)。
+引导节点是网络（包括主网和测试网）中所有其他节点都知道的节点，它们用于引导（Bootstrap）发现对等节点的过程。
+使用类似 Kademlia 的分布式哈希表 (Distributed Hash Table, DHT) 算法，节点能够通过引用列有引导节点的路由表 (Routing Table) 在网络中找到彼此。
+Kademlia 的简要原理是，它是一个点对点协议，它使节点能够通过使用分布式哈希表在网络中寻找彼此，正如 Leffew 在其文章 (2019) 中所提到的。
 
-#### Wire protocol
-The PING/PONG game is better known as the wire subprotocol, and it includes the next specifications:
+也就是说，连接过程始于 PING-PONG（乒乓）交互，其中新节点向引导节点发送 PING 消息，引导节点响应以经过哈希的 PONG 消息。
+如果两个消息匹配，则新节点能够与引导节点建立绑定 (Bond)。此外，新节点向引导节点发送 FIND-NEIGHBOURS（寻找邻居）请求，以便它可以接收到能够连接的邻居列表，
+然后它可以用它们重复 PING-PONG 交互并与它们也建立绑定。
 
-**PING packet structure**
+![节点发现 (Peer Discovery)](https://epf.wiki/images/el-architecture/peer-discovery.png)
+
+#### 有线子协议 (Wire protocol)
+
+PING/PONG 交互更广为人知的名称是有线子协议 (Wire Subprotocol)，它包括以下规范：
+
+**PING 数据包结构 (PING packet structure)**
 ```
 version = 4
 from = [sender-ip, sender-udp-port, sender-tcp-port]
@@ -44,12 +47,12 @@ to = [recipient-ip, recipient-udp-port, 0]
 packet-data = [version, from, to, expiration, enr-seq ...]
 ```
 
-**PONG packet structure**
+**PONG 数据包结构 (PONG packet structure)**
 ```
 packet-data = [to, ping-hash, expiration, enr-seq, ...]
 ```
 
-The packet-data is wrapped in 1280 bytes UDP datagram alongside with the header:
+数据包数据 (Packet-data) 封装在 1280 字节的 UDP 数据报 (Datagram) 中，并带有报头 (Header)：
 ```
 packet-header = hash || signature || packet-type
 hash = keccak256(signature || packet-type || packet-data)
@@ -57,234 +60,237 @@ signature = sign(packet-type || packet-data)
 packet = packet-header || packet-data
 ```
 
-**FindNode packet structure** (called FIND-NEIGHBOURS above)
+**FindNode 数据包结构 (FindNode packet structure)**（上面称为 FIND-NEIGHBOURS）
 ```
 packet-data = [target, expiration, ...]
 ```
-Where the target is a 64-byte secp256k1 node's public key.
+其中 target 是一个 64 字节的 secp256k1 节点公钥。
 
-**Neighbours packet structure**
+**Neighbors 数据包结构 (Neighbors packet structure)**
 ```
 packet-data = [expiration, neighbours, ...]
 neighbours = [ip, udp-port, tcp-port, node-id, ...]
 ```
-Where the neighbours are the list of 16 nodes that are able to connect with the new node.
+其中 neighbours 是能够与新节点连接的 16 个节点的列表。
 
-**ENR Request packet structure**
+**ENR Request 数据包结构 (ENR Request packet structure)**
 ```
 packet-data = [expiration]
 ```
 
-**ENR Response packet structure**
+**ENR Response 数据包结构 (ENR Response packet structure)**
 ```
 packet-data = [request-hash, ENR]
 ```
-Where ENR is the Ethereum Node Record, a standard format for connectivity for nodes. Which it is explained below.
+其中 ENR 是以太坊节点记录 (Ethereum Node Record)，这是节点连通性的标准格式。具体解释如下。
 
 ---
 
+这个类似 Kademlia 的协议包括路由表 (Routing Table)，路由表保存着关于邻近其他节点的信息，由 *k 桶 (k-buckets)* 组成（其中 *k* 是桶中的节点数，目前定义为 16）。
+值得一提的是，所有表项都按照 *最近看到/最久未看到 (Last seen/least-recently seen)* 进行排序，最久未看到的排在头部，最近看到的排在尾部。
+如果其中一个实体在 12 小时内没有做出响应，它就会从表中被移除，而下一个遇到的节点将被添加到列表尾部。
 
-This Kademlia-like protocol includes the routing table, which keeps information about other nodes in the neighbourhood consisting of *k-buckets* (where *k* is the number of nodes in the bucket, currently defined as 16).
-Worth mentioning that all the table entries are sorted by *last seen/least-recently seen* at the head, and most-recently seen at the tail.
-If one of the entities has not been responded to in 12 hours, it is removed from the table, and the next encounter node is added to the tail of the list.
 
+#### 发现协议版本 (Discovery Protocols (Discv4 & Discv5))
 
-#### Discovery Protocols (Discv4 & Discv5)
-Currently, most execution clients have adopted the [Discv5 protocol](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md) for the discovery process, while some are still transitioning from [Discv4](https://github.com/ethereum/devp2p/blob/master/discv4.md). Below is a table categorizing execution clients based on their Discv5 support status (as of May 2025).
+目前，大多数执行客户端都已采用 [Discv5 协议](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)进行发现过程，而一些客户端仍处于从 [Discv4](https://github.com/ethereum/devp2p/blob/master/discv4.md) 过渡的阶段。下表根据截至 2025 年 5 月的 Discv5 支持状态对执行客户端进行了分类。
 
-| **Category**       | **Execution Clients**                     |
+| **类别** | **执行客户端** |
 |---------------------|-------------------------------------------|
-| **Supports Discv5** | [Geth](https://github.com/search?q=repo%3Aethereum%2Fgo-ethereum%20discv5&type=code), [Nethermind](https://github.com/search?q=repo%3ANethermindEth%2Fnethermind+discv5&type=issues), [Reth](https://github.com/search?q=repo%3Aparadigmxyz%2Freth%20discv5&type=code)                    |
-| **Pending Migration** | [Besu](https://github.com/search?q=repo%3Ahyperledger%2Fbesu+discv5&type=issues), [Ethereumjs](https://github.com/ethereumjs/ethereumjs-monorepo/tree/master/packages/devp2p), [Erigon](https://github.com/search?q=repo%3Aerigontech%2Ferigon+discv4&type=code)                    |
+| **支持 Discv5** | [Geth](https://github.com/search?q=repo%3Aethereum%2Fgo-ethereum%20discv5&type=code), [Nethermind](https://github.com/search?q=repo%3ANethermindEth%2Fnethermind+discv5&type=issues), [Reth](https://github.com/search?q=repo%3Aparadigmxyz%2Freth%20discv5&type=code) |
+| **等待迁移** | [Besu](https://github.com/search?q=repo%3Ahyperledger%2Fbesu+discv5&type=issues), [Ethereumjs](https://github.com/ethereumjs/ethereumjs-monorepo/tree/master/packages/devp2p), [Erigon](https://github.com/search?q=repo%3Aerigontech%2Ferigon+discv4&type=code) |
+
 ##### Discv4
-A structured, distributed system that allows Ethereum nodes to discover peers without central coordination.  
 
-- **Node Identities**  
-  - Each node is identified by a secp256k1 key pair.  
-  - The public key serves as the node’s unique identifier (Node ID).  
-  - Distance between nodes is computed using XOR of hashed public keys.  
+一个结构化的分布式系统，允许以太坊节点在没有中央协调的情况下发现对等节点 (Peers)。
 
-- **Node Records (ENR)**  
-  - Nodes store and share connection details using Ethereum Node Records (ENRs).  
-  - The "v4" identity scheme is used to verify node authenticity.  
-  - Peers can request a node’s latest ENR via an **ENRRequest** packet.  
+- **节点身份 (Node Identities)**  
+  - 每个节点由一个 secp256k1 密钥对标识。  
+  - 公钥作为节点的唯一标识符（节点 ID (Node ID)）。  
+  - 节点之间的距离是使用哈希公钥的 XOR（异或）计算出来的。  
 
-- **[Kademlia Table](https://en.wikipedia.org/wiki/Kademlia)**  
-  - Nodes maintain a **routing table** with 256 **[k-buckets](https://en.wikipedia.org/wiki/Kademlia#Fixed-size_routing_tables)** (each holding up to 16 entries).  
-  - A bucket stores nodes within a specific distance range (e.g., `[2^i, 2^(i+1))`).  
-  - Nodes are sorted by last-seen time, ensuring stale nodes are replaced when the table is full.  
+- **节点记录 (Node Records, ENR)**  
+  - 节点使用以太坊节点记录 (Ethereum Node Records, ENR) 存储和共享连接细节。  
+  - "v4" 身份方案用于验证节点的真实性。  
+  - 对等节点可以通过 **ENRRequest** 数据包请求节点的最新 ENR。  
 
-- **Endpoint Verification (Proof-of-Participation)**  
-  - Prevents amplification attacks by verifying nodes before responding to queries.  
-  - A node is considered verified if it has sent a valid **Pong** response to a recent **Ping** request.  
+- **[Kademlia 表 (Kademlia Table)](https://en.wikipedia.org/wiki/Kademlia)**  
+  - 节点维护一个具有 256 个 **[k 桶 (k-buckets)](https://en.wikipedia.org/wiki/Kademlia#Fixed-size_routing_tables)** 的**路由表**（每个桶最多持有 16 个条目）。  
+  - 一个桶存储特定距离范围内的节点（例如，`[2^i, 2^(i+1))`）。  
+  - 节点按最后一次看到的时间排序，确保在表满时替换陈旧的节点。  
 
-- **Recursive Lookup Algorithm**  
-  - Finds the `k` (typically 16) closest nodes to a target.  
-  - The search begins by querying a small, selected subset of the closest known nodes (`α`, often set to 3).  
-  - The lookup is **iterative**, querying new nodes found in previous steps until no closer nodes are discovered.  
+- **端点验证 (Endpoint Verification)（参与证明 (Proof-of-Participation)）**  
+  - 通过在响应查询之前验证节点，来防止放大攻击 (Amplification Attacks)。  
+  - 如果节点对最近的 **Ping** 请求发送了有效的 **Pong** 响应，则认为该节点已验证。  
 
-- **Wire Protocol & Message Types**  
-  - Messages are sent over **UDP** .  
-  - Each packet contains a header (`hash`, `signature`, `packet-type`) followed by encoded data.  
-  - Core message types:  
-    - **Ping (0x01):** Verify node availability.  
-    - **Pong (0x02):** Response to a Ping, proving reachability.  
-    - **FindNode (0x03):** Request nodes near a target ID.  
-    - **Neighbors (0x04):** Reply to FindNode with closest known peers.  
-    - **ENRRequest (0x05):** Request a node’s latest ENR.  
-    - **ENRResponse (0x06):** Provide an ENR in response to a request.  
+- **递归查找算法 (Recursive Lookup Algorithm)**  
+  - 寻找距离目标最近的 `k` 个（通常为 16 个）节点。  
+  - 搜索始于向已知最近节点的一个小型选择子集（`α`，通常设为 3）发送查询。  
+  - 查找是**迭代的 (Iterative)**，在前面的步骤中查询新发现的节点，直到找不到更近的节点。  
+
+- **有线协议与消息类型 (Wire Protocol & Message Types)**  
+  - 消息通过 **UDP** 发送。  
+  - 每个数据包包含一个报头（`hash`、`signature`、`packet-type`），后跟编码的数据。  
+  - 核心消息类型：  
+    - **Ping (0x01):** 验证节点可用性。  
+    - **Pong (0x02):** 对 Ping 的响应，证明可达性。  
+    - **FindNode (0x03):** 请求靠近目标 ID 的节点。  
+    - **Neighbors (0x04):** 回复 FindNode，提供已知最近的对等节点。  
+    - **ENRRequest (0x05):** 请求节点的最新 ENR。  
+    - **ENRResponse (0x06):** 响应请求以提供 ENR。  
 
 
 ##### Discv5
 
-Discv5 is Ethereum’s improved decentralized peer discovery protocol, building upon the foundation of Discv4 with enhanced service discovery and security mechanisms. Like its predecessor, Discv5 enables nodes to locate and connect with peers in a decentralized manner, without relying on centralized directories. However, it introduces encrypted communication, service discovery, and adaptive routing.
+Discv5 是以太坊改进的去中心化对等节点发现协议，在 Discv4 的基础上构建，具有增强的服务发现和服务安全机制。与其前身一样，Discv5 使节点能够以去中心化的方式定位和连接对等节点，而不依赖于中心化目录。然而，它引入了加密通信、服务发现和自适应路由。
 
-Inspired by the Kademlia DHT, discv5 differs by storing only signed node records (ENR) instead of arbitrary key-value pairs. This ensures authenticity and integrity in peer discovery.This ensures authenticity and integrity in peer discovery while maintaining flexibility for protocol extensions.
+受 Kademlia DHT 启发，discv5 的不同之处在于它仅存储签名的节点记录 (ENR)，而不是任意的键值对。这确保了对等节点发现中的真实性和完整性，同时保持了协议扩展的灵活性。
 
-- **Ethereum Node Records (ENR)**
-  - Each node maintains an **Ethereum Node Record (ENR)**, storing **connectivity details, cryptographic keys, and metadata**.
-  - ENRs are signed, self-contained, and update dynamically.
-  - Peers can request the latest ENR using an **ENRRequest packet**.
+- **以太坊节点记录 (Ethereum Node Records, ENR)**
+  - 每个节点维护一个**以太坊节点记录 (Ethereum Node Record, ENR)**，存储**连接细节、密码学密钥和元数据**。
+  - ENR 是签名的、自包含的，并且动态更新。
+  - 对等节点可以使用 **ENRRequest 数据包**请求最新的 ENR。
 
-- **Encrypted Wire Protocol**
-  - Uses **[AES-GCM encryption](https://en.wikipedia.org/wiki/AES-GCM-SIV)** for confidentiality and authenticity.
-  - Establishes **session keys via ECDH** ([Elliptic Curve Diffie-Hellman](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman)).
-  - Implements a **WHOAREYOU challenge-response mechanism** to prevent spoofing.
+- **加密的有线协议 (Encrypted Wire Protocol)**
+  - 使用 **[AES-GCM 加密](https://en.wikipedia.org/wiki/AES-GCM-SIV)** 以确保机密性和真实性。
+  - 通过 ECDH ([椭圆曲线迪菲-赫尔曼 (Elliptic Curve Diffie-Hellman)](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman)) 建立**会话密钥 (Session Keys)**。
+  - 实施 **WHOAREYOU 挑战-响应机制 (WHOAREYOU Challenge-Response Mechanism)** 以防止欺骗。
 
-- **Kademlia-Based Routing & Node Table**
-  - Nodes maintain a **routing table (k-buckets)** with peers sorted by XOR distance.
-  - The lookup process recursively queries the closest known nodes.
-  - The protocol supports **adaptive routing and self-healing**.
+- **基于 Kademlia 的路由与节点表 (Kademlia-Based Routing & Node Table)**
+  - 节点维护一个**路由表 (k 桶)**，其中的对等节点按 XOR 距离进行排序。
+  - 查找过程递归地查询已知最近的节点。
+  - 该协议支持**自适应路由与自愈 (Adaptive Routing and Self-healing)**。
 
-- **Recursive Node Lookup & Peer Discovery**
-  - Nodes find peers through **iterative Kademlia-based lookups**.
-  - Uses parallelized queries to **increase resilience against adversaries**.
-  - Bootstrap nodes facilitate new node entry.
+- **递归节点查找与对等节点发现 (Recursive Node Lookup & Peer Discovery)**
+  - 节点通过**迭代的基于 Kademlia 的查找**来寻找对等节点。
+  - 使用并行查询来**提高对对抗方的弹性**。
+  - 引导节点促进新节点加入。
 
-- **Topic Advertisement & Service Discovery**
-  - Nodes advertise services via **topic advertisements**.
-  - Searches for nodes providing a service use **Kademlia lookups within a topic radius**.
-  - Adaptive **radius estimation** ensures efficient searches.
+- **主题广告与服务发现 (Topic Advertisement & Service Discovery)**
+  - 节点通过**主题广告 (Topic Advertisements)** 宣传服务。
+  - 寻找提供服务的节点的行为在主题半径内使用**Kademlia 查找**。
+  - 自适应**半径估计**确保了高效的搜索。
 
-- **Wire Protocol & Message Types**
-  | **Message**    | **Function** |
+- **有线协议与消息类型 (Wire Protocol & Message Types)**
+  | **消息 (Message)** | **功能 (Function)** |
   |---------------|-------------|
-  | **Ping** (0x01) | Checks if a node is alive. |
-  | **Pong** (0x02) | Response to Ping, confirms reachability. |
-  | **FindNode** (0x03) | Requests peers near a target ID. |
-  | **Nodes** (0x04) | Responds to FindNode with known peers. |
-  | **ENRRequest** (0x05) | Requests the latest ENR of a node. |
-  | **ENRResponse** (0x06) | Provides the requested ENR. |
-  | **WhoAreYou** (0x07) | Authentication challenge. |
-  | **Handshake** (0x08) | Establishes encrypted sessions. |
-  | **TalkReq / TalkResp** (0x09/0x0A) | Enables custom application protocols. |
+  | **Ping** (0x01) | 检查节点是否存活。 |
+  | **Pong** (0x02) | 对 Ping 的响应，确认可达性。 |
+  | **FindNode** (0x03) | 请求靠近目标 ID 的对等节点。 |
+  | **Nodes** (0x04) | 响应 FindNode，返回已知对等节点。 |
+  | **ENRRequest** (0x05) | 请求节点的最新 ENR。 |
+  | **ENRResponse** (0x06) | 提供请求的 ENR。 |
+  | **WhoAreYou** (0x07) | 身份验证挑战。 |
+  | **Handshake** (0x08) | 建立加密会话。 |
+  | **TalkReq / TalkResp** (0x09/0x0A) | 允许自定义应用程序协议。 |
 
 
-
-##### Comparison: Discv4 vs. Discv5
-| Feature                 | Discv4 | Discv5 |
+##### 对比：Discv4 与 Discv5 (Comparison: Discv4 vs. Discv5)
+| 特性 (Feature) | Discv4 | Discv5 |
 |-------------------------|--------|--------|
-| **Node Records**        | Basic ENR | Extensible ENR with metadata |
-| **Security**            | Plaintext | AES-GCM encrypted |
-| **Handshake**           | None | Secure session establishment |
-| **Service Discovery**   | Limited | Topic-based lookup |
-| **Extensibility**       | Static | Supports multiple identity schemes |
-| **Clock Dependence**    | Required | Eliminated |
-| **Scalability**         | Moderate | Optimized for large networks |
+| **节点记录 (Node Records)** | 基础 ENR | 带有元数据的可扩展 ENR |
+| **安全性 (Security)** | 明文 | AES-GCM 加密 |
+| **握手 (Handshake)** | 无 | 安全会话建立 |
+| **服务发现 (Service Discovery)** | 受限 | 基于主题的查找 |
+| **可扩展性 (Extensibility)** | 静态 | 支持多种身份方案 |
+| **时钟依赖 (Clock Dependence)** | 必须 | 已消除 |
+| **可扩展性/缩放性 (Scalability)** | 中等 | 针对大型网络进行了优化 |
 
-### ENR: Ethereum Node Records
-The ENR is a standard format for p2p connectivity, which was originally proposed in the [EIP-778](https://eips.ethereum.org/EIPS/eip-778).
-A node record contains the node's network endpoints, such as the IP address and port, as well as the node's public key and the sequence number of the record.
+### ENR：以太坊节点记录 (ENR: Ethereum Node Records)
 
-The record content structure is as follows:
+ENR 是 P2P 连通性的标准格式，最初在 [EIP-778](https://eips.ethereum.org/EIPS/eip-778) 中被提出。
+节点记录包含节点的网络端点（例如 IP 地址和端口），以及节点的公钥和记录的序列号 (Sequence Number)。
 
-| Key | Value                                     |
+记录内容结构如下：
+
+| 键 (Key) | 值 (Value) |
 | --- |-------------------------------------------|
-| id | id scheme, e.g "v4"                       |
-| secp256k1 | compressed public key, 33 bytes           |
-| ip | IPv4 address, 4 bytes                     |
-| tcp | TCP port, big endian integer              |
-| udp | UDP port, big endian integer              |
-| ip6 | IPv6 address, 16 bytes                    |
-| tcp6 | IPv6-specific TCP port, big endian integer |
-| udp6 | IPv6-specific UDP port, big endian integer |
+| id | id 方案，例如 "v4" |
+| secp256k1 | 压缩的公钥，33 字节 |
+| ip | IPv4 地址，4 字节 |
+| tcp | TCP 端口，大端整数 |
+| udp | UDP 端口，大端整数 |
+| ip6 | IPv6 地址，16 字节 |
+| tcp6 | IPv6 特定的 TCP 端口，大端整数 |
+| udp6 | IPv6 特定的 UDP 端口，大端整数 |
 
-All the fields are optional, except for the `id` field, which is required. If no `tcp6`/`udp6` port are provided, the `tcp`/`udp` ports are used for both IPv4 and IPv6.
+除了 `id` 字段是必需的外，所有其他字段都是可选的。如果没有提供 `tcp6`/`udp6` 端口，则 `tcp`/`udp` 端口将同时用于 IPv4 和 IPv6。
 
-The node record is composed of a `signature`, which is the cryptographic signature of record contents, and a `seq` field, which is the sequence number of the record (a 64-bit unsigned integer).
-#### Encoding
+节点记录由 `signature`（记录内容的密码学签名）和 `seq` 字段（记录的序列号，一个 64 位无符号整数）组成。
+#### 编码 (Encoding)
 
-The record is encoded as an RLP list of `[signature, seq, k, v,...]` with a maximum size of 300 bytes.
-Signed records are encoded as follows:
+该记录被编码为最大大小为 300 字节的 `[signature, seq, k, v,...]` RLP 列表。
+签名的记录编码如下：
 ```
 content = [seq, k, v, ...]
 signature = sign(content)
 record = [signature, seq, k, v, ...]
 ```
-In addition to the RLP encoding, there is a textual representation of the record, which is a base64 encoding of the RLP encoding. It is prefixed with `enr:`.
-i.e. `enr:-IS4QHCYrYZbAKWCBRlAy5zzaDZXJBGkcnh4MHcBFZntXNFrdvJjX04jRzjzCBOonrkTfj499SZuOh8R33Ls8RRcy5wBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQPKY0yuDUmstAHYpMa2_oxVtw0RW_QAdpzBQA8yWM0xOIN1ZHCCdl8` which contains the loopback address `127.0.0.1` and the UDP port 30303. The node ID is `a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7`.
+除了 RLP 编码之外，还有一种文本表示形式，即 RLP 编码的 Base64 编码。它以 `enr:` 为前缀。
+例如 `enr:-IS4QHCYrYZbAKWCBRlAy5zzaDZXJBGkcnh4MHcBFZntXNFrdvJjX04jRzjzCBOonrkTfj499SZuOh8R33Ls8RRcy5wBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQPKY0yuDUmstAHYpMa2_oxVtw0RW_QAdpzBQA8yWM0xOIN1ZHCCdl8`，它包含了本地回环地址 `127.0.0.1` 和 UDP 端口 30303。节点 ID 为 `a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7`。
 
-Despite of the fact that the ENR is a standard format for p2p connectivity, it is not mandatory to use it in the Ethereum network. The nodes can use any other format to exchange the information about their connectivity.
-There are two additional formats able to be understand by an Ethereum node: multiaddr and enode.
+尽管 ENR 是 P2P 连通性的标准格式，但在以太坊网络中它并不是强制使用的。节点可以使用任何其他格式来交换有关其连通性的信息。
+以太坊节点能够理解另外两种格式：multiaddr 和 enode。
 
-* The multiaddr was the original one. For example, the multiaddr for a node with a loopback IP listening on TCP port 30303 and node ID `a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7`  is `/ip4/127.0.0.1/tcp/30303/a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7`.
-* The enode is a more human-readable format. For example, the enode for the same node is `enode://a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7@127.0.0.1:30303?discport=30301`. It is a URL-like format describing the node ID encoded before de @ sign, the IP address, the TCP port and the UDP port specified as "discport".
+* multiaddr 是最初使用的格式。例如，对于监听 TCP 端口 30303 且节点 ID 为 `a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7` 的回环 IP 节点，其 multiaddr 是 `/ip4/127.0.0.1/tcp/30303/a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7`。
+* enode 是一种更具可读性的格式。例如，同一节点的 enode 是 `enode://a448f24c6d18e575453db13171562b71999873db5b286df957af199ec94617f7@127.0.0.1:30303?discport=30301`。这是一种类似于 URL 的格式，描述了在 @ 符号前编码的节点 ID、IP 地址、TCP 端口以及指定为 "discport" 的 UDP 端口。
 
-### RLPx protocol (Transport)
+### RLPx 协议 (Transport) (RLPx protocol (Transport))
 
-So far, this article has been referring to the discovering protocol only, but what about the secure information exchange process? Well, RLPx is the TCP-based transport protocol that enables secure peer-to-peer communication in the EL. It handles connection establishment, and message exchange between Ethereum nodes. The name comes from the [RLP serialization format](../EL/RLP.md).
+到目前为止，本文仅指代了发现协议，但安全信息交换过程又是怎样的呢？RLPx 是一种基于 TCP 的传输协议，能够在执行层 (EL) 中实现安全的点对点通信。它处理以太坊节点之间的连接建立和消息交换。其名称源于 [RLP 序列化格式 (RLP Serialization Format)](../EL/RLP.md)。
 
-Before deep diving on the protocol, here it is a summary followed by a digram:
+在深入研究协议之前，这里有一个摘要以及一张图示：
 
-* Secure connection through an encrypted authentication
-* Session establishment
-* Message framing and information exchange
-
-
-![RLPx diagram](../../images/el-architecture/rlpx-communication.png)
-
-#### Secure connection establishment
-
-Once the nodes are discovered, RLPx establishes a secure connection between them by authenticating each other through cryptographic-based handshake.
-This process begins by initating an authentication where the initiator node generates an ephemeral key pair using the secp256k1 elliptic curve. This ephemeral key plays a crucial role in establishing perfect forward secrecy for the session. Then the initiator sends an authentication message including the ephemeral public key and a nonce to the recipient, which accepts the connection, decrypts and verify the auth message with the public key exchanged during the communication.
-
-The recipient sends an acknowledge message back to the initiator, and then sends a first encrypted frame containing a [Hello message](https://github.com/ethereum/devp2p/blob/master/rlpx.md#hello-0x00) which includes the port, their IDs and their client's IDs, and the protocol information. Once the nodes have authenticated each other, they can start with the communication.
-
-#### Session and multiplexing
-Once the authentication is proven they can interact by creating a secure session first through the following process:
-- RLPx uses **Elliptic Curve Integrated Encryption Scheme ([ECIES](https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption))** for secure **handshaking and session establishment**.
-- The cryptosystem consists of:
-  - **Elliptic Curve**: secp256k1
-  - **Key Derivation Function (KDF)**: NIST SP 800-56 Concatenation KDF
-  - **Message Authentication Code (MAC)**: HMAC-SHA-256
-  - **Encryption Algorithm**: AES-128-CTR
-
-##### Encryption Process
-
-1. **Initiator generates a random ephemeral key pair**.
-2. Computes **shared secret** using **Elliptic Curve Diffie-Hellman (ECDH)**.
-3. Derives encryption (`kE`) and MAC (`kM`) keys from the **shared secret**.
-4. Encrypts the message using **AES-128-CTR**.
-5. Computes a **MAC** over the encrypted message for integrity.
-6. Sends the encrypted payload.
-
-##### Decryption Process
-
-1. **Recipient extracts the sender’s ephemeral public key**.
-2. Computes the **shared secret** using **ECDH**.
-3. Derives `kE` and `kM`, then verifies the **MAC**.
-4. **Decrypts** the message using **AES-128-CTR**.
+* 通过加密身份验证实现安全连接
+* 会话建立
+* 消息成帧 (Message Framing) 和信息交换
 
 
-##### Node Identity
+![RLPx 通信图示](https://epf.wiki/images/el-architecture/rlpx-communication.png)
 
-- **Ethereum nodes maintain a persistent secp256k1 key pair** for identity.
-- The **public key** serves as the **Node ID**.
-- The **private key is stored securely** and remains unchanged across sessions.
+#### 安全连接建立 (Secure connection establishment)
 
-##### Generated Secrets
+一旦节点被发现，RLPx 通过基于密码学的握手互相进行身份验证，从而在它们之间建立安全连接。
+该过程始于发起身份验证，其中发起节点使用 secp256k1 椭圆曲线生成一个临时密钥对 (Ephemeral Key Pair)。此临时密钥在为会话建立完全前向安全性 (Perfect Forward Secrecy) 方面起着至关重要作用。然后发起方将包含临时公钥和随机数 (Nonce) 的身份验证消息发送给接收方，接收方接受连接，使用在通信期间交换的公钥解密并验证 auth（身份验证）消息。
 
-| Secret | Description |
+接收方向发起方发送确认消息 (Acknowledge Message)，然后发送第一个加密帧，该帧包含一个 [Hello 消息](https://github.com/ethereum/devp2p/blob/master/rlpx.md#hello-0x00)（包括端口、它们的 ID 以及它们的客户端 ID，和协议信息）。一旦节点互相完成了身份验证，它们就可以开始通信。
+
+#### 会话与多路复用 (Session and multiplexing)
+
+一旦验证通过，它们就可以首先通过以下过程创建安全会话来进行交互：
+- RLPx 使用**椭圆曲线集成加密方案 (Elliptic Curve Integrated Encryption Scheme, ECIES)** 来实现安全的**握手和会话建立**。
+- 该密码系统由以下部分组成：
+  - **椭圆曲线 (Elliptic Curve)**: secp256k1
+  - **密钥派生函数 (Key Derivation Function, KDF)**: NIST SP 800-56 Concatenation KDF
+  - **消息认证码 (Message Authentication Code, MAC)**: HMAC-SHA-256
+  - **加密算法 (Encryption Algorithm)**: AES-128-CTR
+
+##### 加密过程 (Encryption Process)
+
+1. **发起方生成随机临时密钥对**。
+2. 使用**椭圆曲线迪菲-赫尔曼 (Elliptic Curve Diffie-Hellman, ECDH)** 计算**共享密钥 (Shared Secret)**。
+3. 从**共享密钥**派生出加密密钥 (`kE`) 和 MAC 密钥 (`kM`)。
+4. 使用 **AES-128-CTR** 对消息进行加密。
+5. 对加密消息计算一个 **MAC** 以确保完整性。
+6. 发送加密的有效载荷 (Payload)。
+
+##### 解密过程 (Decryption Process)
+
+1. **接收方提取发送方的临时公钥**。
+2. 使用 **ECDH** 计算**共享密钥**。
+3. 派生出 `kE` 和 `kM`，然后验证 **MAC**。
+4. 使用 **AES-128-CTR** **解密**消息。
+
+
+##### 节点身份 (Node Identity)
+
+- **以太坊节点维护一个持久的 secp256k1 密钥对**以表示身份。
+- **公钥**作为**节点 ID (Node ID)**。
+- **私钥安全存储**，且在不同会话之间保持不变。
+
+##### 生成的密钥/秘密 (Generated Secrets)
+
+| 密钥 (Secret) | 描述 (Description) |
 |--------|------------|
 | `static-shared-secret` | `ECDH(node-private-key, remote-node-pubkey)` |
 | `ephemeral-key` | `ECDH(ephemeral-private-key, remote-ephemeral-pubkey)` |
@@ -292,105 +298,105 @@ Once the authentication is proven they can interact by creating a secure session
 | `aes-secret` | `keccak256(ephemeral-key || shared-secret)` |
 | `mac-secret` | `keccak256(ephemeral-key || aes-secret)` |
 
-##### Static-Shared-Secret vs. Ephemeral-Key
+##### 静态共享密钥 与 临时密钥 (Static-Shared-Secret vs. Ephemeral-Key)
 
-###### Static-Shared-Secret
+###### 静态共享密钥 (Static-Shared-Secret)
 
-- Derived using Elliptic Curve Diffie-Hellman (ECDH) between a node’s long-term (static) private key and the peer’s long-term public key.
-- Remains unchanged across multiple sessions with the same peer.
+- 使用椭圆曲线迪菲-赫尔曼 (ECDH) 在节点的长期（静态）私钥与对等方的长期公钥之间派生而来。
+- 与同一对等方的多个会话中保持不变。
 
-If an attacker compromises a node’s private key, past and future communications with that peer can be decrypted, making it vulnerable to long-term key exposure.
+如果攻击者破解了节点的私钥，则过去和未来与该对等方的通信都可以被解密，这使得它容易受到长期密钥泄露的攻击。
 
-###### Ephemeral-Key (Forward Secrecy)
+###### 临时密钥 (Ephemeral-Key)（前向安全性）
 
-- A temporary key pair generated for each handshake, used to derive a fresh session secret.
-- Computed using ECDH between ephemeral private keys exchanged during the handshake.
+- 为每次握手临时生成的密钥对，用于派生全新的会话密钥。
+- 使用在握手期间交换的临时私钥之间的 ECDH 计算得出。
 
-Since ephemeral keys are discarded after a session ends, even if an attacker later obtains a node’s long-term private key, past communications remain secure. This property is known as forward secrecy
+由于临时密钥在会话结束后即被丢弃，即使攻击者稍后获取了节点的长期私钥，过去的通信仍然安全。这种特性被称为前向安全性 (Forward Secrecy)。
 
 
-##### Message Framing
+##### 消息成帧 (Message Framing)
 
-- **Frames encapsulate encrypted messages** for efficient and secure communication.
-- **Multiplexing** allows multiple protocols to run over a single RLPx connection.
+- **帧 (Frames) 封装了加密消息**，以实现高效且安全的通信。
+- **多路复用 (Multiplexing)** 允许在单个 RLPx 连接上运行多个协议。
 
-##### Frame Structure
+##### 帧结构 (Frame Structure)
 
-| Field | Description |
+| 字段 (Field) | 描述 (Description) |
 |-------|------------|
-| `header-ciphertext` | AES-encrypted **header** containing frame metadata. |
-| `header-mac` | **MAC** over the header for integrity verification. |
-| `frame-ciphertext` | AES-encrypted **message data**. |
-| `frame-mac` | **MAC** over the encrypted message data. |
+| `header-ciphertext` | AES 加密的**帧头 (Header)**，包含帧元数据。 |
+| `header-mac` | 对帧头计算的 **MAC**，用于完整性验证。 |
+| `frame-ciphertext` | AES 加密的**消息数据 (Message Data)**。 |
+| `frame-mac` | 对加密消息数据计算的 **MAC**。 |
 
-##### MAC Calculation
+##### MAC 计算 (MAC Calculation)
 
-- Uses **two keccak256 MAC states** (one for **ingress**, one for **egress**).
-- The MAC state is updated as frames are sent or received.
-- Ensures **message integrity** and prevents **tampering**.
+- 使用**两个 keccak256 MAC 状态**（一个用于**输入 (Ingress)**，一个用于**输出 (Egress)**）。
+- MAC 状态随着帧的发送或接收而更新。
+- 确保**消息完整性**并防止**篡改**。
 
 
-##### Capability Messaging
+##### 能力消息传递 (Capability Messaging)
 
-- **Capabilities** define the supported protocols on a given connection.
-- **Multiplexing** enables concurrent usage of multiple capabilities.
+- **能力 (Capabilities)** 定义了在给定连接上支持的协议。
+- **多路复用 (Multiplexing)** 实现了多个能力的并发使用。
 
-##### Message Structure
+##### 消息结构 (Message Structure)
 
-| Field | Description |
+| 字段 (Field) | 描述 (Description) |
 |-------|------------|
-| `msg-id` | Unique identifier for the message type. |
-| `msg-data` | **RLP-encoded** message payload. |
-| `frame-size` | **Compressed size** of `msg-data`. |
+| `msg-id` | 消息类型的唯一标识符。 |
+| `msg-data` | **RLP 编码**的消息有效载荷 (Payload)。 |
+| `frame-size` | `msg-data` 的**压缩大小**。 |
 
 
-#### P2P Capability Messages
+#### P2P 能力消息 (P2P Capability Messages)
 
-- The **"p2p" capability** is **mandatory** and used for initial negotiation.
+- **"p2p" 能力**是**强制性的**，用于初始协商。
 
-#### Core Messages
+#### 核心消息 (Core Messages)
 
-| Message | ID | Function |
+| 消息 (Message) | ID | 功能 (Function) |
 |---------|----|----------|
-| `Hello` | `0x00` | Announces supported capabilities. |
-| `Disconnect` | `0x01` | Initiates a graceful disconnection. |
-| `Ping` | `0x02` | Checks if the peer is alive. |
-| `Pong` | `0x03` | Responds to a `Ping`. |
+| `Hello` | `0x00` | 宣布支持的能力 (Capabilities)。 |
+| `Disconnect` | `0x01` | 发起优雅的断开连接。 |
+| `Ping` | `0x02` | 检查对等节点是否存活。 |
+| `Pong` | `0x03` | 响应 `Ping`。 |
 
-#### Disconnect Reasons
+#### 断开连接原因 (Disconnect Reasons)
 
-| Code | Reason |
+| 代码 (Code) | 原因 (Reason) |
 |------|--------|
-| `0x00` | Requested disconnect. |
-| `0x02` | Protocol violation. |
-| `0x03` | Useless peer. |
-| `0x05` | Already connected. |
-| `0x06` | Incompatible protocol version. |
-| `0x09` | Unexpected identity. |
+| `0x00` | 请求断开连接。 |
+| `0x02` | 违反协议。 |
+| `0x03` | 无用的对等节点。 |
+| `0x05` | 已经连接。 |
+| `0x06` | 不兼容的协议版本。 |
+| `0x09` | 预料之外的身份。 |
 
 
 
 
-### Application-Level Subprotocols  
+### 应用层子协议 (Application-Level Subprotocols)
 
-- **RLPx supports multiple application-level subprotocols** that enable specialized communication between Ethereum nodes.
-- These subprotocols are **built on top of the RLPx transport layer** and are used for  data exchange, state synchronization, and light client support.
+- **RLPx 支持多个应用层子协议**，这些子协议实现了以太坊节点之间的专业化通信。
+- 这些子协议**构建在 RLPx 传输层之上**，用于数据交换、状态同步和轻客户端支持。
 
-#### Common Ethereum Subprotocols  
+#### 常见的以太坊子协议 (Common Ethereum Subprotocols)
 
-| **Subprotocol** | **Purpose** |
+| **子协议 (Subprotocol)** | **目的 (Purpose)** |
 |---------------|------------|
-| **Ethereum Wire Protocol (`eth`)** | Handles **blockchain data exchange**, including block propagation and transaction relaying. |
-| **Ethereum Snapshot Protocol (`snap`)** | Used for **state synchronization**, allowing nodes to download portions of the state trie. |
-| **Light Ethereum Subprotocol (`les`)** | Supports **light clients**, enabling them to request data from full nodes without storing the full state. |
-| **Portal Network (`portal`)** | A decentralized **state, block, and transaction retrieval network** for lightweight clients. |
+| **以太坊有线协议 (Ethereum Wire Protocol, `eth`)** | 处理**区块链数据交换**，包括区块传播和交易中继。 |
+| **以太坊快照协议 (Ethereum Snapshot Protocol, `snap`)** | 用于**状态同步**，允许节点下载部分状态树。 |
+| **轻量级以太坊子协议 (Light Ethereum Subprotocol, `les`)** | 支持**轻客户端**，使它们能够从全节点请求数据，而无需存储完整状态。 |
+| **门户网络 (Portal Network, `portal`)** | 适用于轻量级客户端的去中心化**状态、区块和交易检索网络**。 |
 
 
-### Further Reading
-* [Geth devp2p docs](https://geth.ethereum.org/docs/tools/devp2p)
-* [Ethereum devp2p GitHub](https://github.com/ethereum/devp2p)
-* [Ethereum networking layer](https://ethereum.org/en/developers/docs/networking-layer/)
-* [Ethereum Addresses](https://ethereum.org/en/developers/docs/networking-layer/network-addresses/)
-* Alchemy (2022). [How are Ethereum transactions propagated (broadcast)?](https://www.alchemy.com/overviews/transaction-propagation)
-* Andrew S. Tanenbaum, Nick Feamster, David J. Wetherall (2021). *Computer Networks*. 6th edition. Pearson. London.
-* Kevin Leffew (2019). "Kademlia usage in the Ethereum protocol". [*A brief overview of Kademlia, and its use in various decentralized platforms*](https://medium.com/coinmonks/a-brief-overview-of-kademlia-and-its-use-in-various-decentralized-platforms-da08a7f72b8f). Medium.
+### 延伸阅读 (Further Reading)
+* [Geth devp2p 文档 (Geth devp2p docs)](https://geth.ethereum.org/docs/tools/devp2p)
+* [以太坊 devp2p GitHub (Ethereum devp2p GitHub)](https://github.com/ethereum/devp2p)
+* [以太坊网络层 (Ethereum networking layer)](https://ethereum.org/en/developers/docs/networking-layer/)
+* [以太坊地址 (Ethereum Addresses)](https://ethereum.org/en/developers/docs/networking-layer/network-addresses/)
+* Alchemy (2022). [以太坊交易如何传播（广播）？ (How are Ethereum transactions propagated (broadcast)?)](https://www.alchemy.com/overviews/transaction-propagation)
+* Andrew S. Tanenbaum, Nick Feamster, David J. Wetherall (2021). *Computer Networks*. 第 6 版. Pearson. 伦敦.
+* Kevin Leffew (2019). "以太坊协议中 Kademlia 的应用" (Kademlia usage in the Ethereum protocol). [*Kademlia 在各种去中心化平台中的应用简要概述* (A brief overview of Kademlia, and its use in various decentralized platforms)]. Medium.

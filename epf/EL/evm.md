@@ -1,415 +1,413 @@
-# The Ethereum Virtual Machine (EVM)
+# 以太坊虚拟机 (EVM)
 
-The Ethereum Virtual Machine (EVM) is the heart of the Ethereum World Computer. It performs the crucial computations needed to finalise transactions, permanently storing the results on the blockchain. This article explores the EVM's role in the Ethereum ecosystem and how it works.
+以太坊虚拟机 (Ethereum Virtual Machine, EVM) 是以太坊世界计算机的核心。它执行最终确认交易所需的关键计算，并将结果永久存储在区块链上。本文探讨 EVM 在以太坊生态系统中的角色及其运作方式。
 
-## The Ethereum state machine
+## 以太坊状态机
 
-As the EVM processes transactions, it alters the overall state of Ethereum. In that regard, Ethereum can be viewed as a **state machine**.
+当 EVM 处理交易时，它会改变以太坊的整体状态 (state)。从这个角度来看，以太坊可以被视为一个**状态机 (state machine)**。
 
-In computer science, **state machine** is an abstraction used to model the behavior of a system. It illustrates how a system can be represented by a set of distinct states and how inputs can drive changes in the state.
+在计算机科学中，**状态机**是一种用于对系统行为进行建模的抽象。它展示了一个系统如何通过一组不同的状态来表示，以及输入如何驱动状态的变化。
 
-A familiar example is a vending machine, an automated system for dispensing products upon receiving payment.
+一个熟悉的例子是自动售货机，一种在收到付款后分发产品的自动化系统。
 
-We can model a vending machine existing in three distinct states: idle, awaiting user selection, and dispensing a product. Inputs such as coin insertion or product selection trigger transitions between these states, as depicted in the state diagram:
+我们可以将自动售货机建模为存在于三种不同的状态：空闲 (idle)、等待用户选择 (awaiting selection) 和分发产品 (dispensing a product)。诸如投币或产品选择等输入会触发这些状态之间的转换，如下图所示：
 
-![Vending machine](../../images/evm/vending-machine.gif)
+![自动售货机](https://epf.wiki/images/evm/vending-machine.gif)
 
-Let's formally define the components of a state machine:
+让我们正式定义状态机的组成部分：
 
-1. **State ($S$)**: A State represents distinct conditions or configurations that a system can be in at a given point in time.
-   For the vending machine, possible states are:
+1. **状态 ($S$)**：状态表示系统在给定时间点可能处于的不同条件或配置。
+   对于自动售货机，可能的状态有：
 
 $$ S\in \set {Idle, Selection, Dispensing} $$
 
-2. **Inputs ($I$)**: Inputs are actions, signals, or changes in the system's environment. Input triggers the **state transition function**.
-   For the vending machine, possible inputs include:
+2. **输入 ($I$)**：输入是系统中的动作、信号或环境变化。输入触发**状态转换函数 (state transition function)**。
+   对于自动售货机，可能的输入包括：
 
 $$ I\in \set {InsertCoin, SelectDrink, CollectDrink} $$
 
-3. **State transition function ($\Upsilon$)**: State transition function defines how the system transitions from one state to another (or back to the same state) based on an input and its current state. Essentially, it determines how the system evolves in response to inputs.
+3. **状态转换函数 ($\Upsilon$)**：状态转换函数定义了系统如何基于输入和当前状态，从一个状态转换到另一个状态（或回到相同状态）。本质上，它决定了系统如何响应输入而演化。
 
 $$\Upsilon (S,I) \Longrightarrow S'  $$
 
-> Where S' = next state, S= current state, and I= input.
+> 其中 S' = 下一状态，S = 当前状态，I = 输入。
 
-Example state transition for the vending machine:
+自动售货机的状态转换示例：
 
 $$\Upsilon (Idle,InsertCoin) \Longrightarrow Selection $$
 $$\Upsilon (Selection,SelectDrink) \Longrightarrow Dispensing $$
 $$\Upsilon (Idle,SelectDrink) \Longrightarrow Idle $$
 
-Notice in the last case, the current state transitions back to itself.
+注意在最后一种情况下，当前状态转换回了自身。
 
-### Ethereum as a state machine
+### 以太坊作为状态机
 
-Ethereum, as a whole, can be viewed as a **transaction-based state machine**. It receives transactions as input and transitions into a new state. The current state of Ethereum is referred to as the **world state**.
+以太坊作为一个整体，可以被视为一个**基于交易的状态机 (transaction-based state machine)**。它接收交易作为输入，并转换到新的状态。以太坊的当前状态被称为**世界状态 (world state)**。
 
-Consider a simple Ethereum application - an [NFT](https://ethereum.org/en/nft/) marketplace.
+考虑一个简单的以太坊应用——一个 [NFT](https://ethereum.org/en/nft/) 市场。
 
-In the current world state **S3** (green), Alice owns an NFT. The animation below shows a transaction transferring ownership to you (**S3** ➡️ **S4**). Similarly, selling the NFT back to Alice would transition the state to **S5**:
+在当前世界状态 **S3**（绿色）中，Alice 拥有一个 NFT。下面的动画展示了一笔将所有权转移给你的交易（**S3** ➡️ **S4**）。类似地，将 NFT 卖回给 Alice 会将状态转换到 **S5**：
 
-![Ethereum state machine](../../images/evm/ethereum-state-machine.gif)
+![以太坊状态机](https://epf.wiki/images/evm/ethereum-state-machine.gif)
 
-Notice the current world state is animated _as a pulsating green bubble_.
+注意当前世界状态以*脉动绿色气泡*的形式动画展示。
 
-In the figure above, each transaction is committed to a new state. However, in reality, a group of transactions is bundled into a **block**, and the resulting state is added to the chain of previous states. It must be apparent now why this technology is called **blockchain**.
+在上图中，每笔交易都提交到一个新状态。然而，实际上，一组交易被打包进一个**区块 (block)**，结果状态被添加到先前状态的链上。现在应该清楚为什么这项技术被称为**区块链 (blockchain)**了。
 
-Considering the definition of the state transition function, we draw the following conclusion:
+考虑到状态转换函数的定义，我们得出以下结论：
 
-> ℹ️ Note
-> **EVM is the state transition function of the Ethereum state machine. It determines how Ethereum transitions into a new (world) state based on input (transactions) and current state.**
+> ℹ️ 注意
+> **EVM 是以太坊状态机的状态转换函数。它基于输入（交易）和当前状态，决定以太坊如何转换到新的（世界）状态。**
 
-In Ethereum, the world state is essentially a mapping of 20-byte addresses to account states.
+在以太坊中，世界状态本质上是 20 字节地址到账户状态的映射。
 
-![Ethereum world state](../../images/evm/ethereum-world-state.jpg)
+![以太坊世界状态](https://epf.wiki/images/evm/ethereum-world-state.jpg)
 
-Each account state consists of various components such as storage, code, balance among other data and is associated with a specific address.
+每个账户状态由各种组件组成，如存储 (storage)、代码 (code)、余额 (balance) 以及其他数据，并与特定地址关联。
 
-Ethereum has two kinds of accounts:
+以太坊有两种类型的账户：
 
-- **External account:** An account [controlled by an associated private key](/wiki/Cryptography/ecdsa.md) and empty EVM code.
-- **Contract account:** An account controlled by an associated non-empty EVM code. The EVM code as part of such an account is colloquially known as a _smart contract._
+- **外部账户 (External Account)**：由关联的私钥控制的账户，EVM 代码为空。
+- **合约账户 (Contract Account)**：由关联的非空 EVM 代码控制的账户。此类账户中的 EVM 代码通常被称为*智能合约 (smart contract)*。
 
-Refer [Ethereum data structures](wiki/EL/data-structures.md) for details on how the world state is implemented.
+关于世界状态如何实现的详细信息，请参阅[以太坊数据结构](wiki/EL/data-structures.md)。
 
-## Virtual machine paradigm
+## 虚拟机范式
 
-Given our grasp of state machines, the next challenge is **implementation**.
+理解了状态机之后，下一个挑战是**实现**。
 
-Software needs conversion to the target processor's machine language (Instruction Set Architecture, ISA) for execution. This ISA varies across hardware (e.g., Intel vs. Apple silicon). Modern software also relies on the host operating system for memory management and other essentials.
+软件需要转换为目标处理器的机器语言（指令集架构，Instruction Set Architecture, ISA）才能执行。这种 ISA 因硬件而异（例如 Intel vs. Apple silicon）。现代软件还依赖主机操作系统进行内存管理和其他基本功能。
 
-Ensuring functionality within a fragmented ecosystem of diverse hardware and operating systems is a major hurdle. Traditionally, software had to be compiled into native binaries for each specific target platform:
+在由多样化硬件和操作系统组成的碎片化生态系统中确保功能正常运行是一个重大障碍。传统上，软件必须为每个特定目标平台编译为原生二进制：
 
-![Platform dependent execution](../../images/evm/platform-dependent-execution.jpg)
+![平台依赖执行](https://epf.wiki/images/evm/platform-dependent-execution.jpg)
 
-To address this challenge, a two-part solution is employed.
+为了解决这一挑战，采用了由两部分组成的解决方案。
 
-First, the implementation targets a **virtual machine**, an abstraction layer. Source code is compiled into **bytecode**, a sequence of bytes representing instructions. Each bytecode maps to a specific operation the virtual machine executes.
+首先，实现面向**虚拟机 (virtual machine)**，即一个抽象层。源代码被编译为**字节码 (bytecode)**，即表示指令的字节序列。每个字节码映射到虚拟机执行的特定操作。
 
-The second part involves a platform-specific virtual machine that translates the bytecode into native code for execution.
+第二部分涉及一个平台特定的虚拟机，它将字节码转换为原生代码以执行。
 
-This offers two key benefits: portability (bytecode runs on different platforms without recompiling) and abstraction (separates hardware complexities from software). Developers can thus write code for a single, virtual machine:
+这提供了两个关键优势：可移植性 (portability)（字节码无需重新编译即可在不同平台上运行）和抽象 (abstraction)（将硬件复杂性与软件分离）。开发人员因此可以为单一的虚拟机编写代码：
 
-![Virtual machine paradigm](../../images/evm/virtual-machine-paradigm.jpg)
+![虚拟机范式](https://epf.wiki/images/evm/virtual-machine-paradigm.jpg)
 
-[JVM](https://en.wikipedia.org/wiki/Java_virtual_machine) for Java and LuaVM for Lua are popular examples of Virtual machines. They create platform-neutral bytecode, enabling code to run on various systems without recompiling.
+Java 的 [JVM](https://en.wikipedia.org/wiki/Java_virtual_machine) 和 Lua 的 LuaVM 是虚拟机的流行示例。它们创建平台中立的字节码，使代码无需重新编译即可在各种系统上运行。
 
 ## EVM
 
-The virtual machine concept serves as an abstraction. Ethereum Virtual Machine (EVM) is a _specific_ software implementation of this abstraction. The anatomy of the EVM is described below:
+虚拟机概念作为抽象层。以太坊虚拟机 (EVM) 是这种抽象的*特定*软件实现。EVM 的解剖结构如下所述：
 
-In computer architecture, a word refers to a fixed-size unit of data that the CPU can process at once. EVM has a word size of **32 bytes**.
+在计算机体系结构中，字 (word) 指的是 CPU 一次可以处理的固定大小的数据单元。EVM 的字大小为 **32 字节**。
 
-![EVM anatomy](../../images/evm/evm-anatomy.jpg)
+![EVM 解剖结构](https://epf.wiki/images/evm/evm-anatomy.jpg)
 
-_For clarity, the figure above simplifies the Ethereum state. The actual state includes additional elements like Message Frames and Transient Storage._
+*为清晰起见，上图简化了以太坊状态。实际状态包括额外的元素，如消息帧 (Message Frames) 和瞬态存储 (Transient Storage)。*
 
-In the anatomy described above, EVM is shown to be manipulating the storage, code, and balance of an account instance.
+在上面描述的解剖结构中，EVM 展示为操作账户实例的存储、代码和余额。
 
-In a real-world scenario, EVM may execute transactions involving multiple accounts (each with independent storage, code, and balance) enabling complex interactions on Ethereum.
+在实际场景中，EVM 可能执行涉及多个账户的交易（每个账户具有独立的存储、代码和余额），从而在以太坊上实现复杂的交互。
 
-With a better grasp of virtual machines, let's extend our definition:
+对虚拟机有了更好的理解后，让我们扩展我们的定义：
 
-> ℹ️ Note
-> EVM is the state transition function of the Ethereum state machine. It determines how Ethereum transitions into a new (world) state based on
-> input (transactions) and current state. **It is implemented as a virtual machine so that it can run on any platform, independent of the
-> underlying hardware.**
+> ℹ️ 注意
+> EVM 是以太坊状态机的状态转换函数。它基于输入（交易）和当前状态，决定以太坊如何转换到新的（世界）状态。**它被实现为虚拟机，因此可以在任何平台上运行，独立于底层硬件。**
 
-## EVM bytecode
+## EVM 字节码
 
-EVM bytecode is a representation of a program as a sequence of [**bytes** (8 bits).](https://en.wikipedia.org/wiki/Byte) Each byte within the bytecode is either:
+EVM 字节码是将程序表示为[**字节 (bytes)**](https://en.wikipedia.org/wiki/Byte)（8 位）序列的形式。字节码中的每个字节要么是：
 
-- an instruction known as **opcode**, or
-- input to an opcode known as **operand**.
+- 称为**操作码 (opcode)** 的指令，或
+- 操作码的输入，称为**操作数 (operand)**。
 
-![Binary bytecode](../../images/evm/opcode-binary.jpg)
+![二进制字节码](https://epf.wiki/images/evm/opcode-binary.jpg)
 
-For brevity, EVM bytecode is commonly expressed in [**hexadecimal**](https://en.wikipedia.org/wiki/Hexadecimal) notation:
+为简洁起见，EVM 字节码通常以[**十六进制 (hexadecimal)**](https://en.wikipedia.org/wiki/Hexadecimal)表示法表达：
 
-![Hexadecimal bytecode](../../images/evm/opcode-hex.jpg)
+![十六进制字节码](https://epf.wiki/images/evm/opcode-hex.jpg)
 
-To further enhance comprehension, opcodes have human-readable mnemonics. This simplified bytecode, called **EVM assembly**, is the lowest human-readable form of EVM code:
+为了进一步提高可理解性，操作码具有人类可读的助记符。这种简化的字节码称为 **EVM 汇编 (EVM assembly)**，是 EVM 代码的最低人类可读形式：
 
-![EVM Assembly](../../images/evm/opcode-assembly.jpg)
+![EVM 汇编](https://epf.wiki/images/evm/opcode-assembly.jpg)
 
-Identifying opcodes from operands is straightforward. Currently, only `PUSH*` opcodes have operands (this might change with [EOF](https://eips.ethereum.org/EIPS/eip-7569)). `PUSHX` defines operand length (X bytes after PUSH).
+从操作数中识别操作码很简单。目前，只有 `PUSH*` 操作码有操作数（这可能会随着 [EOF](https://eips.ethereum.org/EIPS/eip-7569) 而改变）。`PUSHX` 定义了操作数长度（PUSH 之后的 X 字节）。
 
-Select Opcodes used in this discussion:
+本讨论中使用的一些操作码：
 
-| Opcode | Name           | Description                                        |
+| 操作码 | 名称           | 描述                                        |
 | ------ | -------------- | -------------------------------------------------- |
-| 60     | `PUSH1`        | Push 1 byte on the stack                           |
-| 01     | `ADD`          | Add the top 2 values of the stack                  |
-| 02     | `MUL`          | Multiply the top 2 values of the stack             |
-| 39     | `CODECOPY`     | Copy code running in current environment to memory |
-| 51     | `MLOAD`        | Load word from memory                              |
-| 52     | `MSTORE`       | Store word to memory                               |
-| 53     | `MSTORE8`      | Store byte to memory                               |
-| 59     | `MSIZE`        | Get the byte size of the expanded memory           |
-| 54     | `SLOAD`        | Load word from storage                             |
-| 55     | `SSTORE`       | Store word to storage                              |
-| 56     | `JUMP`         | Alter the program counter                          |
-| 5B     | `JUMPDEST`     | Mark destination for jumps                         |
-| f3     | `RETURN`       | Halt execution returning output data               |
-| 35     | `CALLDATALOAD` | Copy 32 bytes from calldata to stack               |
-| 37     | `CALLDATACOPY` | Copy input data from calldata to memory            |
-| 80–8F  | `DUP1–DUP16`   | Duplicate Nth stack item to top                    |
-| 90–9F  | `SWAP1–SWAP16` | Swap top with N+1th stack item                     |
+| 60     | `PUSH1`        | 将 1 字节压入栈中                           |
+| 01     | `ADD`          | 将栈顶 2 个值相加                  |
+| 02     | `MUL`          | 将栈顶 2 个值相乘             |
+| 39     | `CODECOPY`     | 将当前环境中运行的代码复制到内存 |
+| 51     | `MLOAD`        | 从内存加载字                              |
+| 52     | `MSTORE`       | 将字存储到内存                               |
+| 53     | `MSTORE8`      | 将字节存储到内存                               |
+| 59     | `MSIZE`        | 获取扩展内存的字节大小           |
+| 54     | `SLOAD`        | 从存储加载字                             |
+| 55     | `SSTORE`       | 将字存储到存储                              |
+| 56     | `JUMP`         | 修改程序计数器                          |
+| 5B     | `JUMPDEST`     | 标记跳转目的地                         |
+| f3     | `RETURN`       | 停止执行并返回输出数据               |
+| 35     | `CALLDATALOAD` | 从 calldata 复制 32 字节到栈               |
+| 37     | `CALLDATACOPY` | 从 calldata 复制输入数据到内存            |
+| 80–8F  | `DUP1–DUP16`   | 复制第 N 个栈项到栈顶                    |
+| 90–9F  | `SWAP1–SWAP16` | 交换栈顶与第 N+1 个栈项                     |
 
-Refer [Appendix H of Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf) for a comprehensive list.
+完整列表请参阅[黄皮书附录 H](https://ethereum.github.io/yellowpaper/paper.pdf)。
 
-> ℹ️ Note
-> [EIPs](https://eips.ethereum.org/) can propose EVM modifications. For instance, [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153) introduced `TSTORE`, and `TSTORE` opcodes.
+> ℹ️ 注意
+> [EIP](https://eips.ethereum.org/) 可以提出 EVM 修改。例如，[EIP-1153](https://eips.ethereum.org/EIPS/eip-1153) 引入了 `TLOAD` 和 `TSTORE` 操作码。
 
-Ethereum clients such as [geth](https://github.com/ethereum/go-ethereum) implement the [EVM specifications](https://github.com/ethereum/execution-specs). This ensures all nodes agree on how transactions alter the system's state, creating a uniform execution environment across the network.
+以太坊客户端如 [geth](https://github.com/ethereum/go-ethereum) 实现了 [EVM 规范](https://github.com/ethereum/execution-specs)。这确保所有节点就交易如何改变系统状态达成一致，从而在整个网络中创建统一的执行环境。
 
-We have covered **what** EVM is, let's explore **how** it works.
+我们已经介绍了 EVM 是**什么**，接下来让我们探索它是**如何**工作的。
 
-# EVM Data Locations
+# EVM 数据位置
 
-The EVM has four main places to store data during execution:
+EVM 在执行期间有四个主要的数据存储位置：
 
-- **Stack**
-- **Memory**
-- **Storage**
+- **栈 (Stack)**
+- **内存 (Memory)**
+- **存储 (Storage)**
 - **Calldata**
 
-Let's explore each of these data stores more in depth.
+让我们更深入地探索这些数据存储。
 
-## Stack
+## 栈
 
-Stack is a simple data structure with two operations: **PUSH** and **POP**. Push adds an item to top of the stack, while pop removes the top-most item. Stack operates on Last-In-First-Out (LIFO) principle - the last element added is the first removed. If you try to pop from an empty stack, a **stack underflow error** occurs.
+栈是一种具有两种操作的简单数据结构：**PUSH** 和 **POP**。Push 将项添加到栈顶，而 pop 移除最顶部的项。栈以后进先出（Last-In-First-Out, LIFO）原则运行——最后添加的元素最先被移除。如果你尝试从空栈中弹出，将发生**栈下溢错误 (stack underflow error)**。
 
-Since the stack is where most opcodes operate, it is responsible for holding the values used to read from and write to **memory** and **storage**, which we'll detail later.
+由于栈是大多数操作码操作的地方，它负责保存用于读写**内存**和**存储**的值，我们稍后会详细说明。
 
-The primary utility of the stack by the EVM is to store intermediate values in computations and to supply arguments to opcodes.
+EVM 使用栈的主要用途是存储计算中的中间值，以及为操作码提供参数。
 
-![EVM stack](../../images/evm/stack.gif)
+![EVM 栈](https://epf.wiki/images/evm/stack.gif)
 
-> The EVM stack has a maximum size of 1024 items consisting of 32 bytes each and is reset after each contract execution. Only the top 16 items are accessible. If you run out of stack, the contract execution will fail.
+> EVM 栈的最大大小为 1024 项，每项 32 字节，并在每次合约执行后重置。只有栈顶的 16 项可被访问。如果栈空间耗尽，合约执行将失败。
 
-The reason behind this 16 item stack size is due to the **DUP** and **SWAP** opcodes.
+这 16 项栈大小的限制是由 **DUP** 和 **SWAP** 操作码造成的。
 
-- **`DUPn`**: Duplicate nth stack item to top.
-- **`SWAPn`**: Swap top with n+1th stack item.
+- **`DUPn`**：复制第 n 个栈项到栈顶。
+- **`SWAPn`**：交换栈顶与第 n+1 个栈项。
 
-The maximum n for **DUP** and **SWAP** is `16`, corresponding to opcodes 0x80–0x8f and 0x90–0x9f respectively. These opcodes are explicitly defined in the EVM and form a fixed set — making the 16-item limit an EVM-level constraint.
+**DUP** 和 **SWAP** 的最大 n 是 `16`，分别对应操作码 0x80–0x8f 和 0x90–0x9f。这些操作码在 EVM 中被明确定义并构成一个固定集合——使 16 项限制成为 EVM 级别的约束。
 
-During bytecode execution, EVM stack functions as a _scratchpad_: opcodes consume data from the top and push results back (See the `ADD` opcode below). Consider a simple addition program:
+在字节码执行期间，EVM 栈作为一个*草稿纸*：操作码从栈顶消费数据并将结果压回（参见下面的 `ADD` 操作码）。考虑一个简单的加法程序：
 
-![EVM stack addition](../../images/evm/stack-addition.gif)
+![EVM 栈加法](https://epf.wiki/images/evm/stack-addition.gif)
 
-Reminder: All values are in hexadecimal, so `0x06 + 0x07 = 0x0d (decimal: 13)`.
+提醒：所有值都是十六进制，因此 `0x06 + 0x07 = 0x0d`（十进制：13）。
 
-Let's take a moment to celebrate our first EVM assembly code 🎉.
+让我们花点时间来庆祝我们的第一个 EVM 汇编代码 🎉。
 
-### Program counter
+### 程序计数器
 
-Recall that the bytecode is a flat array of bytes with each opcode being a 1 byte. The EVM needs a way to track what is the next byte (opcode) to execute in the bytecode array. This is where the EVM **program counter** comes in. It will keep track of the next opcode's offset, which is the location in the byte array of the next instruction to execute on the stack.
+回想一下，字节码是一个扁平的字节数组，每个操作码为 1 字节。EVM 需要一种方法来跟踪字节码数组中下一个要执行的字节（操作码）。这就是 EVM **程序计数器 (program counter)** 的作用。它将跟踪下一个操作码的偏移量 (offset)，即字节数组中下一个要在栈上执行的指令的位置。
 
-In the example above, the values on the left of the assembly code represent the byte offset (starting at 0) of each opcode within the bytecode:
+在上面的示例中，汇编代码左侧的值表示每个操作码在字节码中的字节偏移量（从 0 开始）：
 
-| Bytecode | Assembly | Length of Instruction in bytes | Offset in hex |
+| 字节码 | 汇编 | 指令长度（字节） | 偏移量（十六进制） |
 | -------- | -------- | ------------------------------ | ------------- |
 | 60 06    | PUSH1 06 | 2                              | 00            |
 | 60 07    | PUSH1 07 | 2                              | 02            |
 | 01       | ADD      | 1                              | 04            |
 
-Notice how the table above doesn't include offset 01. This is because the operand 06 takes position of offset 01, and the same concept applies for operand 07 taking position of offset 03.
+注意上表不包含偏移量 01。这是因为操作数 06 占据了偏移量 01 的位置，同样的概念适用于操作数 07 占据偏移量 03 的位置。
 
-Essentially, the **program counter** ensures the EVM knows the position of each next instruction to execute and when to stop executing as illustrated in the example below.
+本质上，**程序计数器**确保 EVM 知道每个下一条指令的位置以及何时停止执行，如下例所示。
 
-![EVM program counter](../../images/evm/program-counter.gif)
+![EVM 程序计数器](https://epf.wiki/images/evm/program-counter.gif)
 
-The `JUMP` opcode directly sets the program counter, enabling dynamic control flow and contributing to the EVM's [Turing completeness](https://en.wikipedia.org/wiki/Turing_completeness) by allowing flexible program execution paths.
+`JUMP` 操作码直接设置程序计数器，实现动态控制流 (control flow)，并通过允许灵活的程序执行路径为 EVM 的[图灵完备性 (Turing completeness)](https://en.wikipedia.org/wiki/Turing_completeness) 做出贡献。
 
-![EVM JUMP opcode](../../images/evm/jump-opcode.gif)
+![EVM JUMP 操作码](https://epf.wiki/images/evm/jump-opcode.gif)
 
-The code runs in an infinite loop, repeatedly adding 7. It introduces two new opcodes:
+该代码在无限循环中运行，反复加 7。它引入了两个新的操作码：
 
-- **JUMP**: Sets the program counter to stack top value (02 in our case), determining the next instruction to execute.
-- **JUMPDEST**: Marks the destination of a jump operation, ensuring intended destinations and preventing unwanted control flow disruptions.
+- **JUMP**：将程序计数器设置为栈顶值（在我们的例子中是 02），决定下一条要执行的指令。
+- **JUMPDEST**：标记跳转操作的目的地，确保预期的目的地并防止不想要的控制流中断。
 
-> High level languages like [Solidity](https://soliditylang.org/) leverage jumps for constructs like if conditions, for loops, and internal functions calls.
+> 高级语言如 [Solidity](https://soliditylang.org/) 利用跳转来实现诸如 if 条件、for 循环和内部函数调用等构造。
 
 ### Gas
 
-Our innocent little program may seem harmless. However, infinite loops in EVM pose a significant threat: they can **devour resources**, potentially causing network [**DoS attacks**.](https://en.wikipedia.org/wiki/Denial-of-service_attack)
+我们那个看似无害的小程序可能看起来很无害。然而，EVM 中的无限循环构成了重大威胁：它们可能**吞噬资源**，潜在地导致网络[**DoS 攻击 (Denial-of-Service attack)**](https://en.wikipedia.org/wiki/Denial-of-service_attack)。
 
-The EVM's **gas** mechanism tackles such threats by acting as a currency for computational resources. Gas costs are [designed to mirror](https://web.archive.org/web/20170904200443/https://docs.google.com/spreadsheets/d/15wghZr-Z6sRSMdmRmhls9dVXTOpxKy8Y64oy9MvDZEQ/edit#gid=0) the limitations of hardware, such as storage capacity or processing power. Transactions pay gas in **Ether (ETH)** to use the EVM, and if they run out of gas before finishing (like an infinite loop), the EVM halts them to prevent resource hogging.
+EVM 的 **gas** 机制通过充当计算资源的货币来应对此类威胁。Gas 成本被[设计为反映](https://web.archive.org/web/20170904200443/https://docs.google.com/spreadsheets/d/15wghZr-Z6sRSMdmRmhls9dVXTOpxKy8Y64oy9MvDZEQ/edit#gid=0)硬件的限制，如存储容量或处理能力。交易以 **Ether (ETH)** 支付 gas 来使用 EVM，如果它们在完成之前耗尽 gas（如无限循环），EVM 将停止它们以防止资源霸占。
 
-This protects the network from getting clogged by resource-intensive or malicious activities. Since gas restricts computations to a finite number of steps, the EVM is considered **quasi Turing complete**.
+这保护网络不被资源密集型或恶意活动堵塞。由于 gas 将计算限制在有限步数内，EVM 被认为是**准图灵完备 (quasi Turing complete)** 的。
 
-![EVM Gas](../../images/evm/evm-gas.gif)
+![EVM Gas](https://epf.wiki/images/evm/evm-gas.gif)
 
-Our example assumed 1 unit of gas per opcode for simplicity, but the actual cost varies based on complexity. The core concept, however, remains unchanged.
+为了简单起见，我们的例子假设每个操作码消耗 1 单位 gas，但实际成本因复杂性而异。核心概念保持不变。
 
-Refer [Appendix G of Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf) for specific gas costs.
+具体 gas 成本请参阅[黄皮书附录 G](https://ethereum.github.io/yellowpaper/paper.pdf)。
 
-## Memory
+## 内存
 
-EVM memory is a byte array of $2^{256}$ (or [practically infinite](https://www.talkcrypto.org/blog/2019/04/08/all-you-need-to-know-about-2256/)) bytes. All locations in memory are well-defined initially as zero.
+EVM 内存是一个 $2^{256}$（或[实际上无限](https://www.talkcrypto.org/blog/2019/04/08/all-you-need-to-know-about-2256/)）字节的字节数组。内存中的所有位置最初都明确定义为零。
 
-![EVM Memory](../../images/evm/evm-memory.gif)
+![EVM 内存](https://epf.wiki/images/evm/evm-memory.gif)
 
-Unlike stack, which provides data to individual instructions, memory stores ephemeral data that is relevant to the entire program. Since the stack has a hard limit of one word slots, **memory** supplements the stack by allowing indexed access to arbitrarily sized data. Stack values can be stored to or loaded from **memory** on demand.
+与为单个指令提供数据的栈不同，内存存储的是与整个程序相关的短暂数据。由于栈有一个字的硬限制，**内存**通过允许对任意大小的数据进行索引访问来补充栈。栈值可以按需存储到**内存**或从**内存**加载。
 
-### Writing to memory
+### 写入内存
 
-`MSTORE` takes two values from the stack: an address **offset** and a 32-byte **value**. It then writes the value to memory at the specified offset.
+`MSTORE` 从栈中取两个值：一个地址**偏移量**和一个 32 字节的**值**。然后将该值写入指定偏移量处的内存。
 
-![MSTORE](../../images/evm/mstore.gif)
+![MSTORE](https://epf.wiki/images/evm/mstore.gif)
 
-`MSIZE` reports currently used memory size (in bytes) on the stack (32 bytes or 20 hex in this case).
+`MSIZE` 在栈上报告当前使用的内存大小（以字节为单位，本例中为 32 字节或十六进制的 20）。
 
-`MSTORE8` takes same arguments as `MSTORE`, but writes 1 byte instead of 1 word.
+`MSTORE8` 接受与 `MSTORE` 相同的参数，但写入 1 字节而不是 1 个字。
 
-![MSTORE8](../../images/evm/mstore8.gif)
+![MSTORE8](https://epf.wiki/images/evm/mstore8.gif)
 
-Notice: When writing 07 to memory, the existing value (06) remains unchanged. It's written to the adjacent byte offset.
+注意：当将 07 写入内存时，现有值 (06) 保持不变。它被写入相邻的字节偏移量。
 
-The size of active memory is still 1 word.
+活动内存的大小仍然是 1 个字。
 
-### Memory expansion
+### 内存扩展
 
-In EVM, memory is dynamically allocated in multiples of 1 word “pages”. Gas is charged for the number of pages expanded.
+在 EVM 中，内存以 1 个字"页"的倍数动态分配。Gas 按扩展的页数收费。
 
-![Memory expansion](../../images/evm/memory-expansion.gif)
+![内存扩展](https://epf.wiki/images/evm/memory-expansion.gif)
 
-Writing a word at a 1-byte offset overflows the initial memory page, triggering an expansion to 2 words (64 bytes or 0x40).
+在 1 字节偏移量处写入一个字会溢出初始内存页，触发扩展到 2 个字（64 字节或 0x40）。
 
-### Reading from memory
+### 读取内存
 
-`MLOAD` reads a value from memory and pushes it onto the stack.
+`MLOAD` 从内存中读取一个值并将其压入栈中。
 
-![MLOAD](../../images/evm/mload.gif)
+![MLOAD](https://epf.wiki/images/evm/mload.gif)
 
-EVM doesn't have a direct equivalent to `MSTORE8` for reading. You must read the entire word using `MLOAD` and then extract the desired byte using a [mask](<https://en.wikipedia.org/wiki/Mask_(computing)>).
+EVM 没有直接等效于 `MSTORE8` 的读取操作。你必须使用 `MLOAD` 读取整个字，然后使用[掩码 (mask)](<https://en.wikipedia.org/wiki/Mask_(computing)>) 提取所需的字节。
 
-> EVM memory is shown as blocks of 32 bytes to illustrate how memory expansion works. In reality, it is a seamless sequence of bytes, without any inherent divisions or blocks.
+> EVM 内存以 32 字节块显示，以说明内存扩展的工作原理。实际上，它是一个无缝的字节序列，没有任何固有的分割或块。
 
 ## Calldata
 
-The **calldata** is read-only input data passed to the EVM via message call instructions or from a transaction and is stored as a sequence of bytes that are accessible via specific opcodes.
+**Calldata** 是通过消息调用 (message call) 指令或从交易传递给 EVM 的只读输入数据，存储为可通过特定操作码访问的字节序列。
 
-### Reading from calldata
+### 从 Calldata 读取
 
-The calldata for the current environment can be accessed using either:
+当前环境的 calldata 可以通过以下方式访问：
 
-- `CALLDATALOAD` opcode which reads 32 bytes from a desired offset onto the stack, [learn more](https://veridelisi.medium.com/learn-evm-opcodes-v-a59dc7cbf9c9).
-- or, using `CALLDATACOPY` to copy a portion of calldata to memory.
+- `CALLDATALOAD` 操作码，从所需偏移量读取 32 字节到栈上，[了解更多](https://veridelisi.medium.com/learn-evm-opcodes-v-a59dc7cbf9c9)。
+- 或使用 `CALLDATACOPY` 将 calldata 的一部分复制到内存。
 
-## Storage
+## 存储
 
-Storage is designed as a **word-addressed word array**. Unlike memory, storage is associated with an Ethereum account and is **persisted** across transactions as part of the world state. It can be thought of as a key-value **database** associated with the smart contract, which is why it contains the contract's "state" variables. Storage size is fixed at 2^256 slots, 32 bytes each.
+存储被设计为**按字寻址的字数组**。与内存不同，存储与以太坊账户关联，并作为世界状态的一部分在交易之间**持久化 (persisted)**。它可以被看作是与智能合约关联的键值**数据库**，这就是为什么它包含合约的"状态"变量。存储大小固定为 2^256 个槽位 (slot)，每个 32 字节。
 
-![EVM Storage](../../images/evm/evm-storage.jpg)
+![EVM 存储](https://epf.wiki/images/evm/evm-storage.jpg)
 
-Storage can only be accessed via the code of its associated account. External accounts don't have code and therefore cannot access their own storage.
+存储只能通过其关联账户的代码访问。外部账户没有代码，因此无法访问自己的存储。
 
-## Writing to storage
+## 写入存储
 
-`SSTORE` takes two values from the stack: a storage **slot** and a 32-byte **value**. It then writes the value to storage of the account. Notice: Slots can be thought of as the basic unit of storage, so when writing to storage, we deal with slots as opposed to individual bytes. Writing to storage is expensive. High-level languages like Solidity optimize storage by packing multiple variables into a single 32-byte slot when their combined size is less than or equal to 32 bytes.
+`SSTORE` 从栈中取两个值：一个存储**槽位**和一个 32 字节的**值**。然后将该值写入账户的存储中。注意：槽位可以被认为是存储的基本单元，因此当写入存储时，我们处理的是槽位而不是单个字节。写入存储是昂贵的。高级语言如 Solidity 通过在多个变量的组合大小小于或等于 32 字节时将它们打包到单个 32 字节槽位中来优化存储。
 
-![EVM Storage write](../../images/evm/sstore.gif)
+![EVM 存储写入](https://epf.wiki/images/evm/sstore.gif)
 
-We've been running a contract account's bytecode all this time. Only now we see the account and the world state, and it matches the code inside the EVM.
+我们一直在运行合约账户的字节码。直到现在，我们才看到账户和世界状态，它与 EVM 内部的代码匹配。
 
-Again, it’s important to note that storage is not part of the EVM itself, rather the currently executing contract account.  More specifically, the contract account contains a **storage root** that points to a separate Merkle Patricia Trie for that contract's storage.
+再次强调，重要的是要注意存储不是 EVM 本身的一部分，而是当前正在执行的合约账户的。更具体地说，合约账户包含一个**存储根 (storage root)**，指向该合约存储的一个单独的 Merkle Patricia Trie。
 
-The example above shows only a small section of the account's storage. Like memory, all the values in storage are well-defined as zero. Also, when a contract executes an `SSTORE` opcode that sets a storage slot’s value from non-zero back to zero, the operation becomes eligible for a gas refund (the gas is not returned immediately but is credited to the transaction’s refund counter)​.  This refund serves as a reward to accounts for freeing up valuable storage from the state trie and is applied at the end of the transaction to offset some of the gas cost. 
+上面的例子只显示了账户存储的一小部分。像内存一样，存储中的所有值都明确定义为零。此外，当合约执行 `SSTORE` 操作码将存储槽位的值从非零设置回零时，该操作有资格获得 gas 退款 (gas refund)（gas 不会立即返回，而是计入交易的退款计数器）。此退款作为对账户释放状态树 (state trie) 中宝贵存储空间的奖励，并在交易结束时应用，以抵消部分 gas 成本。
 
 
-### Reading from storage
+### 读取存储
 
-`SLOAD` takes the storage **slot** from the stack and loads its value back onto it.
+`SLOAD` 从栈中取存储**槽位**，并将其值加载回栈上。
 
-![EVM Storage read](../../images/evm/sload.gif)
+![EVM 存储读取](https://epf.wiki/images/evm/sload.gif)
 
-Notice that the storage value persists between examples, demonstrating its persistence within the world state. Since the world state is replicated across all nodes, storage operations are gas expensive.
+注意存储值在示例之间保持持久，展示了它在世界状态中的持久性。由于世界状态在所有节点之间复制，存储操作在 gas 上很昂贵。
 
-> ℹ️ Note
-> Check out the wiki on [transaction](/wiki/EL/transaction.md) to see EVM in action.
+> ℹ️ 注意
+> 查看关于[交易](/wiki/EL/transaction.md)的 wiki 页面，了解 EVM 的实际应用。
 
-## Wrapping up
+## 总结
 
-We've explored how opcodes are the core instructions executed by the EVM, operating on the stack to perform computations. Computed results can be stored ephemerally in memory or persisted in contract storage.
+我们探索了操作码 (opcode) 如何成为 EVM 执行的核心指令，在栈上操作以执行计算。计算结果可以短暂存储在内存中，或持久化在合约存储中。
 
-Developers rarely write EVM assembly code directly unless performance optimization is crucial. Instead, most developers work with higher-level languages like [Solidity](https://soliditylang.org/), which is then compiled into bytecode.
+开发者很少直接编写 EVM 汇编代码，除非性能优化至关重要。相反，大多数开发者使用高级语言如 [Solidity](https://soliditylang.org/)，然后将其编译为字节码。
 
-Ethereum is a continuously evolving protocol and while the fundamentals we've discussed will remain largely relevant, following [Ethereum Improvement Proposals (EIPs)](https://eips.ethereum.org/) and [network upgrades](https://ethereum.org/history) is encouraged to stay informed of the latest developments in the Ethereum ecosystem.
+以太坊是一个不断演进的协议，虽然我们讨论的基础知识在很大程度上仍然相关，但建议关注[以太坊改进提案 (EIP)](https://eips.ethereum.org/) 和[网络升级](https://ethereum.org/history)，以了解以太坊生态系统的最新发展。
 
-## EVM upgrades
+## EVM 升级
 
-While Ethereum protocol undergoes many changes in each upgrade, changes in EVM are rather subtle. Major change in EVM might break contracts and languages, requiring keeping multiple versions of EVM which introduces a lot of complexity overhead. There are still certain upgrades done on EVM itself like new opcodes or changes to existing ones which don't break their logic. Some examples are EIPs like [1153](https://eips.ethereum.org/EIPS/eip-1153), [4788](https://eips.ethereum.org/EIPS/eip-4788), [5000](https://eips.ethereum.org/EIPS/eip-5000), [5656](https://eips.ethereum.org/EIPS/eip-5656) and [6780](https://eips.ethereum.org/EIPS/eip-6780). These are proposing to add new opcodes except the last one which is especially interesting because it's neutralizing `SELFDESTRUCT` opcode without breaking compatibility. Another important upgrade to EVM which would mark rather a major change is [EOF](https://notes.ethereum.org/@ipsilon/mega-eof-specification). It creates a format to bytecode which EVM can understand and process more easily, it encompasses various EIPs and has been discussed and polished for quite some time.
+虽然以太坊协议在每次升级中经历许多变化，但 EVM 的变化相当微妙。EVM 的重大变化可能会破坏合约和语言，需要维护多个 EVM 版本，这会引入大量复杂性开销。EVM 本身仍会进行某些升级，如新增操作码或修改现有操作码而不破坏其逻辑。一些例子如 [1153](https://eips.ethereum.org/EIPS/eip-1153)、[4788](https://eips.ethereum.org/EIPS/eip-4788)、[5000](https://eips.ethereum.org/EIPS/eip-5000)、[5656](https://eips.ethereum.org/EIPS/eip-5656) 和 [6780](https://eips.ethereum.org/EIPS/eip-6780)。这些 EIP 提议添加新操作码，除了最后一个特别有趣，因为它在不破坏兼容性的情况下中和了 `SELFDESTRUCT` 操作码。EVM 的另一个重要升级将标志着一个更重大的变化，即 [EOF](https://notes.ethereum.org/@ipsilon/mega-eof-specification)。它为字节码创建了一种格式，EVM 可以更容易地理解和处理，它包含各种 EIP，并且已经被讨论和打磨了相当长的时间。
 
-## Resources
+## 资源
 
-### State machines and theory of computation
+### 状态机和计算理论
 
-- 📝 Mark Shead, ["Understanding State Machines."](https://medium.com/free-code-camp/state-machines-basics-of-computer-science-d42855debc66) • [archived](https://web.archive.org/web/20210309014946/https://medium.com/free-code-camp/state-machines-basics-of-computer-science-d42855debc66)
-- 🎥 Prof. Harry Porter, ["Theory of computation."](https://www.youtube.com/playlist?list=PLbtzT1TYeoMjNOGEiaRmm_vMIwUAidnQz)
-- 📘 Michael Sipser, ["Introduction to the Theory of Computation."](https://books.google.com/books/about/Introduction_to_the_Theory_of_Computatio.html?id=4J1ZMAEACAAJ)
-- 🎥 Shimon Schocken et al., ["Build a Modern Computer from First Principles: From Nand to Tetris."](https://www.coursera.org/learn/build-a-computer)
+- 📝 Mark Shead，["Understanding State Machines."](https://medium.com/free-code-camp/state-machines-basics-of-computer-science-d42855debc66) • [archived](https://web.archive.org/web/20210309014946/https://medium.com/free-code-camp/state-machines-basics-of-computer-science-d42855debc66)
+- 🎥 Prof. Harry Porter，["Theory of computation."](https://www.youtube.com/playlist?list=PLbtzT1TYeoMjNOGEiaRmm_vMIwUAidnQz)
+- 📘 Michael Sipser，["Introduction to the Theory of Computation."](https://books.google.com/books/about/Introduction_to_the_Theory_of_Computatio.html?id=4J1ZMAEACAAJ)
+- 🎥 Shimon Schocken et al.，["Build a Modern Computer from First Principles: From Nand to Tetris."](https://www.coursera.org/learn/build-a-computer)
 
 ### EVM
 
-The resources below has been categorized into different sections based on different EVM learning stages.
+以下资源根据不同的 EVM 学习阶段进行了分类。
 
-#### Basics of EVM
+#### EVM 基础
 
-- 🎥 Whiteboard Crypto, ["EVM: An animated non-technical introduction."](https://youtu.be/sTOcqS4msoU)
-- 📝 Vasa, [Getting Deep Into EVM: How Ethereum Works Backstage](https://medium.com/swlh/getting-deep-into-evm-how-ethereum-works-backstage-ab6ad9c0d0bf)
-- 📝 Zaryab Afser, [The ABCs of Ethereum Virtual Machine](https://www.decipherclub.com/the-abcs-of-ethereum-virtual-machine/)
-- 📝 Preethi, [EVM Tweet Thread](https://twitter.com/iam_preethi/status/1483459717670309895)
-- 📝 Decipher Club, [EVM learning resources based on your level of expertise](https://www.decipherclub.com/evm-learning-resources/)
+- 🎥 Whiteboard Crypto，["EVM: An animated non-technical introduction."](https://youtu.be/sTOcqS4msoU)
+- 📝 Vasa，[Getting Deep Into EVM: How Ethereum Works Backstage](https://medium.com/swlh/getting-deep-into-evm-how-ethereum-works-backstage-ab6ad9c0d0bf)
+- 📝 Zaryab Afser，[The ABCs of Ethereum Virtual Machine](https://www.decipherclub.com/the-abcs-of-ethereum-virtual-machine/)
+- 📝 Preethi，[EVM Tweet Thread](https://twitter.com/iam_preethi/status/1483459717670309895)
+- 📝 Decipher Club，[EVM learning resources based on your level of expertise](https://www.decipherclub.com/evm-learning-resources/)
 
-#### Understanding EVM Architecture & Core Components
+#### 理解 EVM 架构和核心组件
 
-- 📝 Gavin Wood, ["Ethereum Yellow Paper."](https://ethereum.github.io/yellowpaper/paper.pdf)
-- 📝 Ethereum Book, [Chapter 13, Ethereum Book](https://cypherpunks-core.github.io/ethereumbook/13evm.html?ref=decipherclub.com)
-- 📘 Andreas M. Antonopoulos & Gavin Wood, ["Mastering Ethereum."](https://github.com/ethereumbook/ethereumbook)
-- 🎥 Jordan McKinney, ["Ethereum Explained: The EVM."](https://www.youtube.com/watch?v=kCswGz9naZg)
-- 📝 LeftAsExercise, ["Smart contracts and the Ethereum virtual machine."](https://leftasexercise.com/2021/08/08/q-smart-contracts-and-the-ethereum-virtual-machine/) • [archived](https://web.archive.org/web/20230324200211/https://leftasexercise.com/2021/08/08/q-smart-contracts-and-the-ethereum-virtual-machine/)
-- 📝 Femboy Capital, ["A Playdate with the EVM."](https://femboy.capital/evm-pt1) • [archived](https://web.archive.org/web/20221001113802/https://femboy.capital/evm-pt1)
-- 🎥 Alex, [EVM - Some Assembly Required](https://www.youtube.com/watch?v=yxgU80jdwL0)
+- 📝 Gavin Wood，["Ethereum Yellow Paper."](https://ethereum.github.io/yellowpaper/paper.pdf)
+- 📝 Ethereum Book，[Chapter 13, Ethereum Book](https://cypherpunks-core.github.io/ethereumbook/13evm.html?ref=decipherclub.com)
+- 📘 Andreas M. Antonopoulos & Gavin Wood，["Mastering Ethereum."](https://github.com/ethereumbook/ethereumbook)
+- 🎥 Jordan McKinney，["Ethereum Explained: The EVM."](https://www.youtube.com/watch?v=kCswGz9naZg)
+- 📝 LeftAsExercise，["Smart contracts and the Ethereum virtual machine."](https://leftasexercise.com/2021/08/08/q-smart-contracts-and-the-ethereum-virtual-machine/) • [archived](https://web.archive.org/web/20230324200211/https://leftasexercise.com/2021/08/08/q-smart-contracts-and-the-ethereum-virtual-machine/)
+- 📝 Femboy Capital，["A Playdate with the EVM."](https://femboy.capital/evm-pt1) • [archived](https://web.archive.org/web/20221001113802/https://femboy.capital/evm-pt1)
+- 🎥 Alex，[EVM - Some Assembly Required](https://www.youtube.com/watch?v=yxgU80jdwL0)
 
-#### Deep-Dive into EVM
+#### EVM 深入探讨
 
-- 📝 Takenobu Tani, [EVM illustrated](https://github.com/takenobu-hs/ethereum-evm-illustrated)
-- 📝 Shafu, ["EVM from scratch."](https://evm-from-scratch.xyz/)
-- 📝 NOXX, ["3 part series: EVM Deep Dives - The Path to Shadowy Super Coder."](https://noxx.substack.com/p/evm-deep-dives-the-path-to-shadowy) • [archived](https://web.archive.org/web/20240106034644/https://noxx.substack.com/p/evm-deep-dives-the-path-to-shadowy)
-- 📝 OpenZeppelin, ["6 part series: Deconstructing a Solidity."](https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737) • [archived](https://web.archive.org/web/20240121025651/https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737)
-- 📝 TrustLook, ["Understand EVM bytecode."](https://blog.trustlook.com/understand-evm-bytecode-part-1/) • [archived](https://web.archive.org/web/20230603080857/https://blog.trustlook.com/understand-evm-bytecode-part-1/)
-- 📝 Degatchi, ["A Low-Level Guide To Solidity's Storage Management."](https://degatchi.com/articles/low_level_guide_to_soliditys_storage_management) • [archived](https://web.archive.org/web/20231202105650/https://degatchi.com/articles/low_level_guide_to_soliditys_storage_management/)
-- 📝 Zaryab Afser, ["Journey of smart contracts from Solidity to Bytecode"](https://www.decipherclub.com/ethereum-virtual-machine-article-series/)
-- 🎥 Ethereum Engineering Group, [EVM: From Solidity to byte code, memory and storage](https://www.youtube.com/watch?v=RxL_1AfV7N4&t=2s)
-- 📝 Trust Chain, [7 part series about how Solidity uses EVM under the hood.](https://trustchain.medium.com/reversing-and-debugging-evm-smart-contracts-392fdadef32d)
+- 📝 Takenobu Tani，[EVM illustrated](https://github.com/takenobu-hs/ethereum-evm-illustrated)
+- 📝 Shafu，["EVM from scratch."](https://evm-from-scratch.xyz/)
+- 📝 NOXX，["3 part series: EVM Deep Dives - The Path to Shadowy Super Coder."](https://noxx.substack.com/p/evm-deep-dives-the-path-to-shadowy) • [archived](https://web.archive.org/web/20240106034644/https://noxx.substack.com/p/evm-deep-dives-the-path-to-shadowy)
+- 📝 OpenZeppelin，["6 part series: Deconstructing a Solidity."](https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737) • [archived](https://web.archive.org/web/20240121025651/https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737)
+- 📝 TrustLook，["Understand EVM bytecode."](https://blog.trustlook.com/understand-evm-bytecode-part-1/) • [archived](https://web.archive.org/web/20230603080857/https://blog.trustlook.com/understand-evm-bytecode-part-1/)
+- 📝 Degatchi，["A Low-Level Guide To Solidity's Storage Management."](https://degatchi.com/articles/low_level_guide_to_soliditys_storage_management) • [archived](https://web.archive.org/web/20231202105650/https://degatchi.com/articles/low_level_guide_to_soliditys_storage_management/)
+- 📝 Zaryab Afser，["Journey of smart contracts from Solidity to Bytecode"](https://www.decipherclub.com/ethereum-virtual-machine-article-series/)
+- 🎥 Ethereum Engineering Group，[EVM: From Solidity to byte code, memory and storage](https://www.youtube.com/watch?v=RxL_1AfV7N4&t=2s)
+- 📝 Trust Chain，[7 part series about how Solidity uses EVM under the hood.](https://trustchain.medium.com/reversing-and-debugging-evm-smart-contracts-392fdadef32d)
 - [Learn EVM Opcodes](https://veridelisi.medium.com/learn-evm-opcodes-v-a59dc7cbf9c9) • [archived](https://web.archive.org/web/20240806231824/https://veridelisi.medium.com/learn-evm-opcodes-v-a59dc7cbf9c9)
 - [More on EVM Storage](https://medium.com/coinmonks/solidity-storage-how-does-it-work-8354afde3eb) • [archived](https://web.archive.org/web/20230808231549/https://medium.com/coinmonks/solidity-storage-how-does-it-work-8354afde3eb)
 - [Storage, Memory, and Stack Overview](https://ethereum.stackexchange.com/questions/23720/usage-of-memory-storage-and-stack-areas-in-evm) • [archived](https://web.archive.org/web/20240529150647/https://ethereum.stackexchange.com/questions/23720/usage-of-memory-storage-and-stack-areas-in-evm)
 - [Calldata](https://learnevm.com/chapters/fn/calldata) • [archived](https://web.archive.org/web/20250306133755/https://learnevm.com/chapters/fn/calldata)
 
-### Tools & EVM Puzzles
+### 工具和 EVM 谜题
 
-- 🧮 smlXL, ["evm.codes: Opcode reference and interactive playground."](https://www.evm.codes/)
-- 🧮 smlXL, ["evm.storage: Interactive storage explorer."](https://www.evm.storage/)
-- 🧮 Ethervm, [Low level reference for EVM opcodes](https://ethervm.io/)
-- 🎥 Austin Griffith, ["ETH.BUILD."](https://www.youtube.com/watch?v=30pa790tIIA&list=PLJz1HruEnenCXH7KW7wBCEBnBLOVkiqIi)
-- 💻 Franco Victorio, ["EVM puzzles."](https://github.com/fvictorio/evm-puzzles)
-- 💻 Dalton Sweeney, ["More EVM puzzles."](https://github.com/daltyboy11/more-evm-puzzles)
-- 💻 Zaryab Afser, ["Decipher EVM puzzles."](https://www.decipherclub.com/decipher-evm-puzzles-game/)
+- 🧮 smlXL，["evm.codes: Opcode reference and interactive playground."](https://www.evm.codes/)
+- 🧮 smlXL，["evm.storage: Interactive storage explorer."](https://www.evm.storage/)
+- 🧮 Ethervm，[Low level reference for EVM opcodes](https://ethervm.io/)
+- 🎥 Austin Griffith，["ETH.BUILD."](https://www.youtube.com/watch?v=30pa790tIIA&list=PLJz1HruEnenCXH7KW7wBCEBnBLOVkiqIi)
+- 💻 Franco Victorio，["EVM puzzles."](https://github.com/fvictorio/evm-puzzles)
+- 💻 Dalton Sweeney，["More EVM puzzles."](https://github.com/daltyboy11/more-evm-puzzles)
+- 💻 Zaryab Afser，["Decipher EVM puzzles."](https://www.decipherclub.com/decipher-evm-puzzles-game/)
 
-## Implementations
+## 实现
 
-- 💻 Solidity: Brock Elmore, ["solvm: EVM implemented in solidity."](https://github.com/brockelmore/solvm)
+- 💻 Solidity: Brock Elmore，["solvm: EVM implemented in solidity."](https://github.com/brockelmore/solvm)
 - 💻 Go: [Geth](https://github.com/ethereum/go-ethereum)
 - 💻 C++: [EVMONE](https://github.com/ethereum/evmone)
 - 💻 Python: [py-evm](https://github.com/ethereum/py-evm)
 - 💻 Rust: [revm](https://github.com/bluealloy/revm)
-- 💻 Js/CSS: Riley, ["The Ethereum Virtual Machine."](https://github.com/jtriley-eth/the-ethereum-virtual-machine)
+- 💻 Js/CSS: Riley，["The Ethereum Virtual Machine."](https://github.com/jtriley-eth/the-ethereum-virtual-machine)
 
-### EVM based programming languages
+### 基于 EVM 的编程语言
 
 - 🗄 [Solidity](https://soliditylang.org/)
 - 🗄 [Huff](https://github.com/huff-language/)

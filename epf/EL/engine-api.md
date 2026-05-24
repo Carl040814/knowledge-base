@@ -1,61 +1,61 @@
-# Engine API
+# 引擎 API (Engine API)
 
 > [!WARNING]
-> The Glamsterdam section of this page covers active areas of research (EIP-7732 ePBS and EIP-7928 BALs). Those sections may be outdated at time of reading and are subject to future updates as the design space evolves.
+> 本页面的 Glamsterdam 部分涵盖了活跃的研究领域（EIP-7732 ePBS 和 EIP-7928 BAL）。这些部分在阅读时可能已经过时，并随着设计空间的演变在未来进行更新。
 
-**Prerequisite reading:** [EL Architecture](/wiki/EL/el-architecture.md)
+**预备阅读：** [EL 架构 (EL Architecture)](/wiki/EL/el-architecture.md)
 
-The Engine API is the authenticated communication interface between the Consensus Layer (CL) and the Execution Layer (EL), introduced at The Merge. The CL drives the EL's block building, validation, and fork choice through this interface. It tells the EL which chain is canonical, asks it to build new blocks, and sends received blocks for validation.
+引擎 API (Engine API) 是共识层 (Consensus Layer, CL) 与执行层 (Execution Layer, EL) 之间经过身份验证的通信接口，在合并 (The Merge) 时引入。CL 通过该接口驱动 EL 的区块构建 (block building)、验证和分叉选择 (fork choice)。它告知 EL 哪条链是规范链 (canonical chain)，请求其构建新区块，并将接收到的区块发送以进行验证。
 
-## Architecture
+## 架构 (Architecture)
 
-### Network Isolation
+### 网络隔离 (Network Isolation)
 
-The Engine API is served on a **dedicated port (default: 8551)**, strictly separate from the public-facing JSON-RPC API (default: 8545). This isolation is a security requirement. Shared ports would allow public traffic or deliberate DoS floods to starve the consensus dialogue, causing missed proposals and attestations.
+引擎 API 在**专用端口（默认：8551）**上运行，与面向公众的 JSON-RPC API（默认：8545）严格隔离。这种隔离是一项安全要求。共享端口将允许公共流量或蓄意的拒绝服务 (Denial of Service, DoS) 洪水攻击耗尽共识对话，导致遗漏提案 (proposals) 和证明 (attestations)。
 
-### Communication Protocols
+### 通信协议 (Communication Protocols)
 
-| Protocol | Authentication | Notes |
-|----------|---------------|-------|
-| HTTP | JWT on every request | Standard; stateless |
-| WebSocket | JWT on initial handshake only | Persistent connection; no per-frame auth |
-| IPC | None | Same-machine only; filesystem permissions provide isolation |
+| 协议 (Protocol) | 身份验证 (Authentication) | 说明 (Notes) |
+|---|---|---|
+| HTTP | 每次请求均需使用 JWT | 标准；无状态 |
+| WebSocket | 仅在初始握手时使用 JWT | 持久连接；无单帧验证 |
+| IPC | 无 | 仅限同机通信；文件系统权限提供隔离 |
 
-### Ancillary eth_ Methods
+### 辅助 eth_ 方法 (Ancillary eth_ Methods)
 
-The spec requires the EL to expose all nine of the following `eth_` methods on the authenticated Engine API port, enabling the CL to query chain state without a separate connection:
+规范要求 EL 在经过身份验证的引擎 API 端口上公开以下所有九个 `eth_` 方法，以便 CL 无需建立单独连接即可查询链状态：
 
 `eth_blockNumber`, `eth_call`, `eth_chainId`, `eth_getCode`, `eth_getBlockByHash`, `eth_getBlockByNumber`, `eth_getLogs`, `eth_sendRawTransaction`, `eth_syncing`
 
-`eth_getLogs` is critical for CL monitoring of the deposit contract (pre-Electra). `eth_call` enables the CL to verify EIP-7002 withdrawal credentials without broadcasting transactions.
+`eth_getLogs` 对于 CL 监控存款合约（pre-Electra）至关重要。`eth_call` 使 CL 能够验证 EIP-7002 的取款凭证，而无需广播交易。
 
-## Authentication
+## 身份验证 (Authentication)
 
-The CL and EL share a 256-bit (32-byte) hex-encoded JWT secret, configured via a `--jwt-secret` CLI flag pointing to a `jwt.hex` file. If omitted, the EL auto-generates a random secret for that session and writes it to `jwt.hex` in its data directory.
+CL 和 EL 共享一个 256 位（32 字节）十六进制编码的 JWT 密钥，该密钥通过指向 `jwt.hex` 文件的 `--jwt-secret` 命令行界面 (Command Line Interface, CLI) 标志进行配置。如果省略，EL 将为该会话自动生成一个随机密钥，并将其写入其数据目录中的 `jwt.hex` 中。
 
-**Algorithm**: The EL must enforce **HS256** (HMAC-SHA256). Any JWT specifying `alg: none` must be immediately rejected to prevent authentication bypass.
+**算法 (Algorithm)**：EL 必须强制使用 **HS256** (HMAC-SHA256)。任何指定 `alg: none` 的 JWT 都必须立即被拒绝，以防止身份验证绕过。
 
-**Replay protection**: Every JWT must include an `iat` (issued-at) claim. The EL must reject any request where the token's `iat` deviates by more than **±60 seconds** from the EL's local clock. This prevents captured tokens from being replayed to induce chain reorganizations.
+**重放保护 (Replay protection)**：每个 JWT 必须包含一个 `iat`（签发时间）声明 (claim)。EL 必须拒绝任何令牌的 `iat` 与 EL 本地时钟偏差超过 **±60 秒**的请求。这可以防止捕获的令牌被重放以引发链重组 (reorganizations)。
 
-Optional claims (`id`, `clv`) may be included for telemetry but are not validated for access control.
+为了遥测 (telemetry) 目的，可以包含可选的声明（`id`，`clv`），但不对其进行访问控制验证。
 
-## Capability Negotiation
+## 能力协商 (Capability Negotiation)
 
 ### engine_exchangeCapabilities
 
-`engine_exchangeCapabilities` has no version suffix. It is the only Engine API method without one. It lets clients discover each other's supported method versions.
+`engine_exchangeCapabilities` 没有版本后缀。它是唯一没有版本后缀的引擎 API 方法。它允许客户端发现彼此支持的方法版本。
 
-- The EL **must** support this method; the CL may call it optionally
-- Each party sends an array of their supported method names with version suffixes (e.g. `["engine_newPayloadV3", "engine_newPayloadV4"]`)
-- The EL responds with its own list. `engine_exchangeCapabilities` itself **must not** appear in the response.
-- The EL must not log errors if this method is never called (backward compatibility)
+- EL **必须**支持此方法；CL 可以选择性调用它。
+- 每一方都发送一个支持的方法名称及其版本后缀的数组（例如 `["engine_newPayloadV3", "engine_newPayloadV4"]`）。
+- EL 用自己的列表进行响应。`engine_exchangeCapabilities` 本身**绝不能**出现在响应中。
+- 如果从未调用此方法，EL 不得记录错误（以保证向后兼容性）。
 
 ### engine_getClientVersionV1
 
-An optional method allowing the CL and EL to identify each other's software. Each side returns a `ClientVersionV1` structure with a two-letter client code, human-readable name, version string, and 4-byte commit hash. The compact identifiers are designed to fit in the 32-byte beacon block graffiti field for network diversity tracking.
+一种可选方法，允许 CL 和 EL 识别彼此的软件。每一侧都返回一个 `ClientVersionV1` 结构，其中包含两个字母的客户端代码、易于阅读的名称、版本字符串和 4 字节的提交哈希 (commit hash)。紧凑的标识符旨在适合 32 字节的信标区块涂鸦 (beacon block graffiti) 字段，以便进行网络多样性跟踪。
 
-| Code | EL Client | Code | CL Client |
-|------|-----------|------|-----------|
+| 代码 | EL 客户端 | 代码 | CL 客户端 |
+|---|---|---|---|
 | `BU` | Besu | `GR` | Grandine |
 | `EG` | Erigon | `LH` | Lighthouse |
 | `EJ` | EthereumJS | `LS` | Lodestar |
@@ -65,167 +65,167 @@ An optional method allowing the CL and EL to identify each other's software. Eac
 | `RH` | Reth | | |
 | `TE` | Trin-Execution | | |
 
-The EL must not log errors if this method is never called.
+如果从未调用此方法，EL 不得记录错误。
 
-## Core Methods
+## 核心方法 (Core Methods)
 
 ### engine_forkchoiceUpdatedV3
 
-Updates the EL's canonical chain view and optionally initiates block building.
+更新 EL 的规范链视图，并选择性地启动区块构建。
 
-**Parameters:**
-- `forkchoiceState`: `{headBlockHash, safeBlockHash, finalizedBlockHash}`
-- `payloadAttributes` (optional): `{timestamp, prevRandao, suggestedFeeRecipient, withdrawals, parentBeaconBlockRoot}`. If provided, the EL starts building a payload and returns a `payloadId`.
+**参数 (Parameters)：**
+- `forkchoiceState`：`{headBlockHash, safeBlockHash, finalizedBlockHash}`
+- `payloadAttributes`（可选）：`{timestamp, prevRandao, suggestedFeeRecipient, withdrawals, parentBeaconBlockRoot}`。如果提供，EL 开始构建负载并返回一个 `payloadId`。
 
-**Returns:** `{payloadStatus, payloadId}`
+**返回 (Returns)：** `{payloadStatus, payloadId}`
 
-`engine_forkchoiceUpdatedV3` returns only `VALID`, `INVALID`, or `SYNCING`. It never returns `ACCEPTED`. A fork choice update is an authoritative command to reorganize or extend the canonical chain, so the EL must fully resolve the head block's state before executing the update. `ACCEPTED` is exclusive to `engine_newPayload`.
+`engine_forkchoiceUpdatedV3` 仅返回 `VALID`（有效）、`INVALID`（无效）或 `SYNCING`（同步中）。它绝不会返回 `ACCEPTED`（已接受）。分叉选择更新是重组或延伸规范链的权威命令，因此 EL 在执行更新之前必须完全解析头区块的状态。`ACCEPTED` 是 `engine_newPayload` 所独有的。
 
-### Payload Status Values
+### 负载状态值 (Payload Status Values)
 
-| Status | Returned by | Meaning |
-|--------|-------------|---------|
-| `VALID` | both | Block and all ancestors fully downloaded and EVM-verified |
-| `INVALID` | both | Violates consensus rules; `latestValidHash` identifies the highest valid ancestor for fork recovery |
-| `SYNCING` | both | Required ancestor data is missing locally; EL has begun fetching from p2p |
-| `ACCEPTED` | newPayload only | Block hash valid, all transactions non-zero length, payload does **not** extend the canonical chain (it is on a side branch), ancestors are locally available. EVM execution is deliberately deferred until fork choice may pivot to this branch. |
+| 状态 | 返回自 | 含义 |
+|---|---|---|
+| `VALID` | 两者 | 区块及所有祖先区块已完整下载并完成 EVM 验证 |
+| `INVALID` | 两者 | 违反共识规则；`latestValidHash` 标识用于分叉恢复的最高有效祖先区块 |
+| `SYNCING` | 两者 | 本地缺失所需的祖先数据；EL 已开始通过 p2p 获取 |
+| `ACCEPTED` | 仅限 newPayload | 区块哈希有效，所有交易长度非零，负载**没有**延伸规范链（它在侧支上），祖先在本地可用。EVM 执行故意推迟，直到分叉选择可能会转向该分支。 |
 
-**ACCEPTED vs SYNCING**: `SYNCING` means the EL cannot accept the block because its chain history is missing. `ACCEPTED` means the ancestry is intact. The EL chose not to run full EVM validation because this is currently a non-canonical side branch. If LMD-GHOST later pivots to this branch, the EL executes the deferred state transitions.
+**ACCEPTED 与 SYNCING 的对比**：`SYNCING` 意味着 EL 无法接受该区块，因为其链历史记录缺失。`ACCEPTED` 意味着祖先链完好无损。EL 选择不运行完整的以太坊虚拟机 (Ethereum Virtual Machine, EVM) 验证，因为目前这是一个非规范的侧分支。如果 LMD-GHOST 稍后转向此分支，EL 将执行推迟的状态过渡 (state transition)。
 
 ### engine_newPayloadV4
 
-Delivers an execution payload from a received beacon block to the EL for validation.
+将接收到的信标区块中的执行负载 (execution payload) 交付给 EL 进行验证。
 
-**Parameters:**
-- `executionPayload`: the full block
-- `expectedBlobVersionedHashes`: ordered list of blob versioned hashes
-- `parentBeaconBlockRoot`: parent beacon block root (EIP-4788)
-- `executionRequests`: EL-generated requests for the CL (Electra+)
+**参数：**
+- `executionPayload`：完整区块
+- `expectedBlobVersionedHashes`：有序的 blob 版本化哈希列表
+- `parentBeaconBlockRoot`：父信标区块根 (EIP-4788)
+- `executionRequests`：EL 生成的针对 CL 的请求（Electra 及更高版本）
 
-**Validation:**
-- Executes all transactions and verifies the resulting state root
-- **Blob hash validation**: extracts `blob_versioned_hashes` from every blob-carrying transaction in the payload, preserving inclusion order, concatenates them, and compares against `expectedBlobVersionedHashes`. Any mismatch or ordering difference returns `INVALID`.
+**验证：**
+- 执行所有交易并验证所产生的状态根
+- **Blob 哈希验证**：从负载中每个携带 blob 的交易中提取 `blob_versioned_hashes`，保持包含顺序，将其拼接，并与 `expectedBlobVersionedHashes`进行比较。任何不匹配或顺序差异都会返回 `INVALID`。
 
-**Returns:** `VALID`, `INVALID`, `SYNCING`, or `ACCEPTED`
+**返回：** `VALID`, `INVALID`, `SYNCING`, 或 `ACCEPTED`
 
 ### engine_getPayloadV4
 
-Retrieves a payload the EL built after a `forkchoiceUpdated` call with `payloadAttributes`.
+检索 EL 在调用带有 `payloadAttributes` 的 `forkchoiceUpdated` 后构建的负载。
 
-**Parameters:** `payloadId` is the 8-byte ID returned by `engine_forkchoiceUpdatedV3`.
+**参数：** `payloadId` 是由 `engine_forkchoiceUpdatedV3` 返回的 8 字节 ID。
 
-**Returns:**
-- `executionPayload`: the assembled block
-- `blockValue`: total wei in priority fees accruing to `feeRecipient` (256-bit quantity)
-- `blobsBundle`: `{commitments, proofs, blobs}`. Contains 48-byte KZG commitments, 48-byte KZG proofs, and 131,072-byte blob data for the CL to build blob sidecars.
-- `shouldOverrideBuilder`: a boolean **suggestion** from the EL that the locally built payload should be used instead of an external MEV-Boost bid. The CL may or may not act on this. It is one input into the CL's decision, not a command. The EL sets it using implementation-defined heuristics (e.g. a high-value transaction has been persistently excluded from builder bids). If the EL implements no heuristic, it must default to `false`.
-- `executionRequests`: EL-generated requests (Electra+)
+**返回：**
+- `executionPayload`：组装好的区块
+- `blockValue`：归属于 `feeRecipient` 的总优先费用（以 wei 为单位，256 位数量）
+- `blobsBundle`：`{commitments, proofs, blobs}`。包含 48 字节的 KZG 承诺、48 字节的 KZG 证明和 131,072 字节的 blob 数据，以便 CL 构建 blob 边车 (blob sidecar)。
+- `shouldOverrideBuilder`：EL 的一个布尔值**建议**，即应使用本地构建的负载，而不是外部的 MEV-Boost 竞价。CL 可以采纳也可能不采纳。它是 CL 决策的输入之一，而不是命令。EL 使用实现定义的启发式方法来设置它（例如，一个高价值交易一直被构建者竞价排除在外）。如果 EL 没有实现启发式方法，它必须默认返回 `false`。
+- `executionRequests`：EL 生成的请求（Electra 及更高版本）
 
-## Execution Requests (EIP-7685)
+## 执行请求 (Execution Requests, EIP-7685)
 
-Introduced in V4 (Prague/Electra), execution requests allow EVM smart contracts to trigger consensus-layer state changes. Each request is `request_type ++ request_data` where `request_type` is a 1-byte prefix.
+在 V4（Prague/Electra）中引入，执行请求允许 EVM 智能合约触发共识层状态变化。每个请求都是 `request_type ++ request_data`，其中 `request_type` 是 1 字节的前缀。
 
-**Supported types in Electra:**
+**Electra 中支持的类型：**
 
-| Type | EIP | Description |
-|------|-----|-------------|
-| `0x00` | EIP-6110 | **Deposit requests**: EL pushes deposit events to the CL directly, replacing CL log polling. Reduces validator activation time from ~12 hours to ~13 minutes. Max per payload: `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD = 8,192`. |
-| `0x01` | EIP-7002 | **Withdrawal requests**: Smart contracts holding `0x01` withdrawal credentials can trigger partial or full validator exits from the EVM. Processed via predeploy at `0x00000961Ef480Eb55e80D19ad83579A64c007002`. Target: 2/block; max: 16/block. Fee: `fake_exponential(1_wei, excess, 17)`, near 1 wei under normal load and exponentially expensive under sustained demand. System call gas: 30,000,000 (excluded from block gas accounting). |
-| `0x02` | EIP-7251 | **Consolidation requests**: Merge multiple 32 ETH validators into a single compounding validator (up to 2048 ETH effective balance). Target: 1/block; max: 2/block. Pending queue hard limit: `PENDING_CONSOLIDATIONS_LIMIT = 262,144` (2^18). |
+| 类型 | EIP | 描述 |
+|---|---|---|
+| `0x00` | EIP-6110 | **存款请求 (Deposit requests)**：EL 直接将存款事件推送到 CL，取代 CL 日志轮询。将验证者激活时间从 ~12 小时缩短到 ~13 分钟。每个负载的最大值：`MAX_DEPOSIT_REQUESTS_PER_PAYLOAD = 8,192`。 |
+| `0x01` | EIP-7002 | **提现请求 (Withdrawal requests)**：持有 `0x01` 提现凭证的智能合约可以从 EVM 触发部分或全部验证者退出。通过在 `0x00000961Ef480Eb55e80D19ad83579A64c007002` 的预部署合约进行处理。目标：2个/区块；最大值：16个/区块。费用：`fake_exponential(1_wei, excess, 17)`，在正常负载下接近 1 wei，在持续需求下呈指数级昂贵。系统调用 gas：30,000,000（排除在区块 gas 计费之外）。 |
+| `0x02` | EIP-7251 | **合并请求 (Consolidation requests)**：将多个 32 ETH 验证者合并为一个复合验证者（有效余额最高可达 2048 ETH）。目标：1个/区块；最大值：2个/区块。挂起队列硬限：`PENDING_CONSOLIDATIONS_LIMIT = 262,144` (2^18)。 |
 
-**Ordering and validation rules**: The `executionRequests` array must be:
-- Sorted in **strictly ascending order** by `request_type`
-- Each `request_type` byte appears **at most once** (no duplicates)
-- No element with empty `request_data` (elements of length <= 1 byte must be excluded)
+**排序和验证规则**：`executionRequests` 数组必须：
+- 按 `request_type` 进行**严格升序排序**
+- 每个 `request_type` 字节**最多出现一次**（无重复）
+- 没有 `request_data` 为空的元素（长度 <= 1 字节的元素必须被排除）
 
-Any violation returns `-32602: Invalid params`. The EL also computes a `requests_hash` (SHA-256 over the sorted list) and validates it against the block header; a mismatch returns `INVALID`. For a block with no requests, the hash defaults to `sha256("") = 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+任何违反规则的行为都会返回 `-32602: Invalid params`。EL 还会计算一个 `requests_hash`（对排序后的列表进行 SHA-256 哈希），并与区块头进行验证；不匹配则返回 `INVALID`。对于没有请求的区块，哈希默认使用 `sha256("") = 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
 
-## Version History
+## 版本历史 (Version History)
 
-| Version | EL Fork | CL Fork | Key Changes |
-|---------|---------|---------|-------------|
-| V1 | Paris | Bellatrix | Initial post-Merge: `forkchoiceUpdated`, `newPayload`, `getPayload` |
-| V2 | Shanghai | Capella | Added `withdrawals` to payload attributes and execution payload |
-| V3 | Cancun | Deneb | Added `blobVersionedHashes`, `parentBeaconBlockRoot`; `executionPayload` gains `blobGasUsed`, `excessBlobGas`; `getPayload` returns `BlobsBundleV1` |
-| V4 | Prague | Electra | Added `executionRequests` (EIP-7685) |
+| 版本 | EL 分叉 | CL 分叉 | 关键变化 |
+|---|---|---|---|
+| V1 | Paris | Bellatrix | 初始合并后版本：`forkchoiceUpdated`, `newPayload`, `getPayload` |
+| V2 | Shanghai | Capella | 在负载属性和 executionPayload 中添加了 `withdrawals`（提现） |
+| V3 | Cancun | Deneb | 添加了 `blobVersionedHashes`, `parentBeaconBlockRoot`；executionPayload 增加了 `blobGasUsed`, `excessBlobGas`；`getPayload` 返回 `BlobsBundleV1` |
+| V4 | Prague | Electra | 添加了 `executionRequests` (EIP-7685) |
 
-## Slot Lifecycle
+## 时隙生命周期 (Slot Lifecycle)
 
-The Engine API operates within a strict 12-second slot heartbeat. For a proposer node:
+引擎 API 在严格的 12 秒时隙 (slot) 心跳内运行。对于提议者 (proposer) 节点：
 
-| Time | Action |
-|------|--------|
-| **t = 0s** | Slot begins. CL calls `engine_forkchoiceUpdatedV3` with `payloadAttributes`. EL returns `payloadId`. |
-| **t = 1-3s** | EL builds the payload: selects mempool transactions, executes them, computes state root. CL optionally queries external MEV relays. |
-| **t = 3s** | CL calls `engine_getPayloadV4`, wraps payload into a `BeaconBlock`, signs it, broadcasts. |
-| **t = 4s** | **Attestation deadline.** Other validators must have received the block, called `engine_newPayloadV4`, and received `VALID` by this point. Late blocks are not attested to and earn no inclusion revenue. |
-| **t = 4-12s** | CL calls `engine_forkchoiceUpdatedV3` (without `payloadAttributes`) to set the new block as head. |
+| 时间 | 操作 |
+|---|---|
+| **t = 0s** | 时隙开始。CL 调用带有 `payloadAttributes` 的 `engine_forkchoiceUpdatedV3`。EL 返回 `payloadId`。 |
+| **t = 1-3s** | EL 构建负载：选择交易池 (mempool) 中的交易，执行它们，计算状态根。CL 选择性地查询外部 MEV 中继 (relays)。 |
+| **t = 3s** | CL 调用 `engine_getPayloadV4`，将负载包装到 `BeaconBlock`（信标区块）中，签名并广播。 |
+| **t = 4s** | **证明截止时间。** 其他验证者必须在此时间点前收到区块，调用 `engine_newPayloadV4`，并收到 `VALID`。迟到的区块将不会被证明，并且无法获得包含收益。 |
+| **t = 4-12s** | CL 调用 `engine_forkchoiceUpdatedV3`（不带 `payloadAttributes`）将新区块设置为头。 |
 
-Non-proposer nodes skip the first three steps and only perform `engine_newPayloadV4` followed by `engine_forkchoiceUpdatedV3`.
+非提议者节点跳过前三个步骤，仅执行 `engine_newPayloadV4`，然后执行 `engine_forkchoiceUpdatedV3`。
 
-### Optimistic Sync
+### 乐观同步 (Optimistic Sync)
 
-During heavy load, the CL may import a beacon block optimistically without waiting for full EVM execution. If the EL later returns `INVALID`, the CL reorgs back to `latestValidHash`. The maximum optimistic import depth is bounded by `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` (default: **128 slots**, ~25.6 minutes), configurable via `--safe-slots-to-import-optimistically`. This prevents "fork choice poisoning" attacks where a malicious peer feeds structurally valid but computationally invalid blocks at the chain tip.
+在重负载期间，CL 可能会乐观地导入信标区块，而无需等待完整的 EVM 执行。如果 EL 稍后返回 `INVALID`，则 CL 将重组回 `latestValidHash`。最大乐观导入深度受限于 `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`（默认：**128 个时隙**，~25.6 分钟），可通过 `--safe-slots-to-import-optimistically` 进行配置。这可以防止“分叉选择毒化”攻击，即恶意节点在链尖端提供结构有效但计算无效的区块。
 
-## Error Handling
+## 错误处理 (Error Handling)
 
-### JSON-RPC Error Codes
+### JSON-RPC 错误码 (JSON-RPC Error Codes)
 
-| Code | Name | Trigger |
-|------|------|---------|
-| `-32700` to `-32603` | Standard JSON-RPC | Parse errors, invalid requests, method not found, invalid params, internal errors |
-| `-32000` | Server error | Generic EL failure; response **must** include a `data.err` string with diagnostic context (e.g. `"LevelDB read failure"`) |
-| `-38001` | Unknown payload | `engine_getPayload` called with a `payloadId` that has no active build process or has timed out |
-| `-38002` | Invalid forkchoice state | `forkchoiceState` hashes are logically inconsistent (e.g. `safeBlockHash` is not an ancestor of `headBlockHash`) |
-| `-38003` | Invalid payload attributes | `payloadAttributes` fields are structurally invalid or missing fork-required fields |
-| `-38004` | Too large request | An array parameter exceeds hardcoded memory constraints |
-| `-38005` | Unsupported fork | Payload timestamp does not align with the EL's active fork (e.g. a Deneb-format payload submitted before Deneb activation) |
+| 代码 | 名称 | 触发条件 |
+|---|---|---|
+| `-32700` 至 `-32603` | 标准 JSON-RPC | 解析错误、无效请求、找不到方法、无效参数、内部错误 |
+| `-32000` | 服务器错误 | 通用 EL 故障；响应**必须**包含带有诊断上下文的 `data.err` 字符串（例如 `"LevelDB read failure"`） |
+| `-38001` | 未知负载 | 调用 `engine_getPayload` 时使用的 `payloadId` 没有处于活动状态的构建进程或已超时 |
+| `-38002` | 无效的分叉选择状态 | `forkchoiceState` 哈希在逻辑上不一致（例如 `safeBlockHash` 不是 `headBlockHash` 的祖先） |
+| `-38003` | 无效的负载属性 | `payloadAttributes` 字段在结构上无效或缺少分叉所需的字段 |
+| `-38004` | 请求过大 | 数组参数超出了硬编码的内存限制 |
+| `-38005` | 不支持的分叉 | 负载时间戳与 EL 的活动分叉不一致（例如，在 Deneb 激活之前提交了 Deneb 格式的负载） |
 
-### Failure Modes
+### 失败模式 (Failure Modes)
 
-**`SYNCING`**: CL retries `engine_forkchoiceUpdatedV3` until the EL catches up. Do not attest to or build on that block.
+**`SYNCING`**：CL 重试 `engine_forkchoiceUpdatedV3`，直到 EL 追上。不要证明或在该区块上构建。
 
-**`INVALID`**: CL marks that block and all descendants as invalid, reverts fork choice to `latestValidHash`.
+**`INVALID`**：CL 将该区块及所有后代区块标记为无效，将分叉选择还原为 `latestValidHash`。
 
-**EL unreachable** (port down, JWT mismatch, crash): CL cannot propose or validate. Validators miss all duties until the connection is restored.
+**EL 无法访问**（端口关闭、JWT 不匹配、崩溃）：CL 无法提议或验证。在连接恢复之前，验证者将错过所有职责。
 
-## Future Upgrades
+## 未来升级 (Future Upgrades)
 
-### Fusaka (Fulu/Osaka, December 3, 2025, epoch 411392)
+### Fusaka (Fulu/Osaka, 2025年12月3日，epoch 411392)
 
-The Fusaka upgrade spans 13 EIPs covering DA scaling, execution performance, and protocol cleanup. Key Engine API impacts:
+Fusaka 升级包含 13 个 EIP，涵盖数据可用性 (Data Availability, DA) 扩展、执行性能和协议清理。引擎 API 的关键影响：
 
-**Data availability:**
-- **EIP-7594 (PeerDAS)**: Nodes sample small column subsets instead of downloading full blobs, enabling safe blob throughput increases. `engine_getPayloadBodiesByHashV2` and `engine_getPayloadBodiesByRangeV2` are updated to support PeerDAS cell proof structures.
-- **EIP-7918**: Blob base fee floor tied proportionally to the execution base fee, preventing blob fees from collapsing to 1 wei during low demand.
-- **EIP-7892 (BPO forks)**: Blob Parameter Only forks allow blob counts to be scaled post-Fusaka via lightweight network adjustments without triggering full hard forks. BPO1 and BPO2 activated shortly after Fusaka, raising blob targets to 10/15 and 14/21 respectively.
+**数据可用性 (Data availability)：**
+- **EIP-7594 (PeerDAS)**：节点对小的列子集进行采样，而不是下载完整的 blob，从而实现 blob 吞吐量的安全提升。`engine_getPayloadBodiesByHashV2` 和 `engine_getPayloadBodiesByRangeV2` 已更新以支持 PeerDAS 单元格证明 (cell proof) 结构。
+- **EIP-7918**：Blob 基础费用地板与执行基础费用成比例挂钩，防止 blob 费用在低需求期间降至 1 wei。
+- **EIP-7892 (BPO forks)**：仅限 Blob 参数 (Blob Parameter Only, BPO) 分叉允许在 Fusaka 之后通过轻量级网络调整来扩展 blob 数量，而无需触发完整的硬分叉。BPO1 和 BPO2 在 Fusaka 之后不久激活，分别将 blob 目标提高到 10/15 和 14/21。
 
-**Execution performance:**
-- **EIP-7935**: Default block gas limit raised to **60M** (coordinated among clients, not a consensus rule).
-- **EIP-7825**: Transaction gas limit capped at **2^24 = 16,777,216 gas**. No single transaction can occupy an entire block.
-- **EIP-7934**: RLP execution block size capped at **8 MiB** (`MAX_RLP_BLOCK_SIZE = 10 MiB - 2 MiB safety margin`). The CL gossip protocol already drops blocks over 10 MiB; the 2 MiB margin reserves headroom for the beacon block, making the effective EL payload limit 8 MiB.
-- **EIP-7883**: MODEXP precompile repriced. Minimum gas raised from 200 to **500**, general cost formula **tripled**, and large-exponent multiplier raised from 8 to **16**.
-- **EIP-7823**: MODEXP inputs bounded at **8192 bits (1024 bytes)** per input (base, exponent, modulus). All historical real-world usage was under this limit.
-- **EIP-7917**: Deterministic proposer lookahead. The proposer schedule is known one full epoch in advance, improving MEV and PBS coordination.
+**执行性能 (Execution performance)：**
+- **EIP-7935**：默认区块 gas 限制提高到 **60M**（由客户端协同完成，非共识规则）。
+- **EIP-7825**：交易 gas 限制上限为 **2^24 = 16,777,216 gas**。没有哪单笔交易可以占满整个区块。
+- **EIP-7934**：RLP 执行区块大小上限为 **8 MiB**（`MAX_RLP_BLOCK_SIZE = 10 MiB - 2 MiB 安全余量`）。CL 传播协议已经丢弃超过 10 MiB 的区块；2 MiB 的余量为信标区块预留了空间，使得有效的 EL 负载限制为 8 MiB。
+- **EIP-7883**：MODEXP 预编译合约重新定价。最低 gas 从 200 提高到 **500**，通用成本公式**翻三倍**，大指数乘数从 8 提高到 **16**。
+- **EIP-7823**：MODEXP 输入每个输入限制为 **8192 位（1024 字节）**（基数、指数、模数）。所有历史上真实的用法都在此限制之内。
+- **EIP-7917**：确定性提议者展望。提议者日程表会提前一个完整 epoch 得知，从而改善 MEV 和 PBS 协调。
 
-### Glamsterdam (post-Fusaka)
+### Glamsterdam (Fusaka 之后)
 
-**EIP-7732 (ePBS)** is the proposed Glamsterdam CL headliner. It moves PBS from the out-of-protocol MEV-Boost sidecar into the consensus layer, eliminating reliance on trusted relays. The Engine API slot lifecycle changes materially: the proposer receives only a signed **builder commitment** at t=3s and broadcasts it without the execution payload; the builder then reveals the full `ExecutionPayloadEnvelope` to the network after the t=4s attestation deadline. This prevents the proposer from stealing the builder's MEV while retaining the ability to attest. New Engine API methods handle commitment validation separately from full EVM execution.
+**EIP-7732 (ePBS)** 是提议的 Glamsterdam CL 重头戏。它将 PBS 从协议外的 MEV-Boost 边车移入共识层，消除了对可信中继的依赖。引擎 API 的时隙生命周期将发生重大改变：提议者在 t=3s 时仅接收已签名的**构建者承诺 (builder commitment)**，并在没有执行负载的情况下对其进行广播；然后构建者在 t=4s 证明截止时间之后向网络揭示完整的 `ExecutionPayloadEnvelope`。这可防止提议者窃取构建者的 MEV，同时保留证明的能力。新的引擎 API 方法分别处理承诺验证与完整 EVM 执行。
 
-**EIP-7928 (Block-Level Access Lists)** is the proposed Glamsterdam EL headliner. Every block would include an explicit map of all addresses and storage slots accessed during execution, enabling:
-- Parallel pre-fetching of state before EVM execution
-- Parallel execution of non-conflicting transactions across CPU cores
-- Execution-less state verification for stateless and ZK clients
+**EIP-7928 (区块级访问列表)** 是提议的 Glamsterdam EL 重头戏。每个区块都将包含执行过程中访问的所有地址和存储插槽的显式映射，从而实现：
+- 在 EVM 执行前并行预取状态
+- 在 CPU 核心之间并行执行无冲突的交易
+- 为无状态和 ZK 客户端提供免执行的状态验证
 
-The Engine API would validate this by having the EL execute the payload, compute the access list internally, and verify it against the `blockAccessList` in the payload header. A mismatch returns `INVALID`. Both EIPs are draft proposals.
+引擎 API 将通过让 EL 执行负载、在内部计算访问列表、并与负载头中的 `blockAccessList` 进行验证来验证此行为。不匹配则返回 `INVALID`。这两个 EIP 都是草案提案。
 
-## Resources
+## 资源 (Resources)
 
-- [Engine API specification (execution-apis)](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-- [EIP-3675: Upgrade to Proof-of-Stake](https://eips.ethereum.org/EIPS/eip-3675)
-- [EIP-7685: General purpose EL requests](https://eips.ethereum.org/EIPS/eip-7685)
-- [EIP-7002: Execution layer triggerable withdrawals](https://eips.ethereum.org/EIPS/eip-7002)
-- [EIP-7607: Hardfork Meta - Fusaka](https://eips.ethereum.org/EIPS/eip-7607)
-- [EIP-7732: Enshrined Proposer-Builder Separation](https://eips.ethereum.org/EIPS/eip-7732)
-- [EIP-7928: Block-Level Access Lists](https://eips.ethereum.org/EIPS/eip-7928)
-- [Engine API visual guide](https://hackmd.io/@danielrachi/engine_api)
+- [引擎 API 规范 (execution-apis)](https://github.com/ethereum/execution-apis/tree/main/src/engine)
+- [EIP-3675: 升级到权益证明](https://eips.ethereum.org/EIPS/eip-3675)
+- [EIP-7685: 通用 EL 请求](https://eips.ethereum.org/EIPS/eip-7685)
+- [EIP-7002: 执行层可触发的提现](https://eips.ethereum.org/EIPS/eip-7002)
+- [EIP-7607: 硬分叉元数据 - Fusaka](https://eips.ethereum.org/EIPS/eip-7607)
+- [EIP-7732: 封装式提议者-构建者分离](https://eips.ethereum.org/EIPS/eip-7732)
+- [EIP-7928: 区块级访问列表](https://eips.ethereum.org/EIPS/eip-7928)
+- [引擎 API 可视化指南](https://hackmd.io/@danielrachi/engine_api)

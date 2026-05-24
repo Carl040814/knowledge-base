@@ -1,75 +1,67 @@
-# Boneh-Lynn-Shacham (BLS) signature
+# Boneh-Lynn-Shacham (BLS) 签名
 
 ### TLDR;
 
-- Proof-of-stake protocols use digital signatures to identify their participants and hold them accountable.
-  - Validators in Beacon chain (Ethereum) use BLS signatures to participate in Consensus, sign blocks, post attestations etc.
-- BLS signatures can be aggregated together, making them efficient to verify at large scale.
-- Signature aggregation allows the beacon chain to scale to hundreds of thousands of validators.
-- Normal Ethereum transaction signatures on the execution layer remain using ECDSA. However, account abstracted wallets can also utilize BLS.
+- 权益证明（proof-of-stake）协议使用数字签名来识别参与者并让他们承担责任。
+  - 信标链（Beacon chain）中以太坊的验证者使用 BLS 签名参与共识、签名区块、发布证明（attestations）等。
+- BLS 签名可以被聚合在一起，使其在大规模环境下验证效率很高。
+- 签名聚合使信标链能够扩展到数十万验证者。
+- 执行层上普通的以太坊交易签名仍使用 ECDSA。然而，账户抽象钱包也可以使用 BLS。
 
-BLS is a digital signature scheme with aggregation properties. Given set of signatures (_signature_1_, ..., _signature_n_) anyone can produce an aggregated signature. Aggregation can also be done on secret keys and public keys. Furthermore, the BLS signature scheme is deterministic, non-malleable, and efficient. Its simplicity and cryptographic properties allows it to be useful in a variety of use-cases, specifically when minimal storage space or bandwidth are required. This page will cover the general idea and Math behind BLS signatures, further cover BLS in context of Ethereum.
+BLS 是一种具有聚合属性的数字签名方案。给定一组签名（_signature_1_, ..., _signature_n_），任何人都可以生成一个聚合签名。对密钥和公钥也可以进行聚合。此外，BLS 签名方案是确定性的、不可塑的（non-malleable）且高效的。其简洁性和密码学特性使其适用于各种用例，特别是在需要最小存储空间或带宽的场景中。本页将涵盖 BLS 签名背后的通用思想和数学原理，并进一步讨论以太坊背景下的 BLS。
 
-## How BLS works?
+## BLS 如何工作？
 
-At the core of BLS signatures is the concept of bilinear mapping through pairings on elliptic curves. A key component is a pairing function $e$, defined between two groups derived from elliptic curves:
+BLS 签名的核心是通过椭圆曲线上的配对（pairings）实现的双线性映射（bilinear mapping）概念。关键组成部分是一个配对函数 $e$，定义在从椭圆曲线派生的两个群之间：
 
-$$e: G_1 \times G_2 \rightarrow G_T$$
+$$e: G_1 \\times G_2 \\rightarrow G_T$$
 
-This function is efficiently computable and must satisfy bilinear properties:
+该函数可高效计算，且必须满足双线性属性：
 
-- For all $P,Q$ in $G_1$ and $a$ in integers, bilinearity is defined as:
+- 对于 $G_1$ 中所有 $P,Q$ 和整数 $a$，双线性定义为：
   $$e(aP, Q) = e(P, Q)^a$$
   $$e(P, aQ) = e(P, Q)^a$$
 
-- Additionally, it must distribute over addition:
-  $$e(P + Q, R) = e(P, R) \times e(Q, R)$$
-  $$e(P, Q + R) = e(P, Q) \times e(P, R)$$
+- 此外，它必须对加法可分配：
+  $$e(P + Q, R) = e(P, R) \\times e(Q, R)$$
+  $$e(P, Q + R) = e(P, Q) \\times e(P, R)$$
 
-These properties enable the cryptographic mechanisms necessary for functions like signature aggregation, which is a pivotal feature in blockchain applications and cryptographic consensus.
+这些属性使得签名聚合等密码学机制成为可能，这在区块链应用和密码学共识中是一个关键特性。
 
-#### Why BLS Over Schnorr and ECDSA for Digital Signatures?
+#### 为什么在数字签名中选择 BLS 而非 Schnorr 和 ECDSA？
 
-Traditional ECDSA signatures, as commonly used in Bitcoin or Ethereum transactions, depend heavily on the randomness of nonce generation and necessitate verification of all involved public keys individually, which can be computationally intensive. After its patent expired, Schnorr signatures became an alternative scheme which allows for some aggregation but still lacks the full efficiencies gained from BLS.
+传统的 ECDSA 签名（如比特币或以太坊交易中常用的）严重依赖 nonce 生成的随机性，并且需要单独验证所有涉及的公开密钥，计算量很大。专利到期后，Schnorr 签名成为一种替代方案，允许部分聚合，但仍缺乏 BLS 带来的全部效率优势。
 
-BLS signatures, employing bilinear pairings, offer robust protection against certain cryptographic attacks and produce shorter signatures. Unlike Schnorr, BLS does not rely on random number generation for securing signatures, making it inherently more secure against randomness-related vulnerabilities.
+BLS 签名利用双线性配对，提供了针对某些密码学攻击的健壮防护，并生成更短的签名。与 Schnorr 不同，BLS 不依赖随机数生成来保护签名，使其在本质上对随机性相关的漏洞更安全。
 
-_Please note: While BLS signatures themselves do not require a random nonce for each signing operation (making them deterministic), the initial step of generating private keys in BLS is still dependent on secure random number generation. Unlike ECDSA, where a nonce is crucial in each signature to maintain security (and the randomness of this nonce is essential to prevent vulnerabilities), BLS avoids the need for this kind of nonce during the signing process. However, the randomness in generating the private key remains critical. This initial randomness ensures that the private key is secure and unpredictable, which is fundamental for the overall security of the cryptographic system._
+_请注意：虽然 BLS 签名本身不需要每次签名操作的随机 nonce（使其成为确定性签名），但 BLS 中生成私钥的初始步骤仍依赖于安全的随机数生成。与 ECDSA 不同（在 ECDSA 中 nonce 对每次签名维护安全至关重要，且 nonce 的随机性对于防止漏洞至关重要），BLS 在签名过程中避免了对此类 nonce 的需求。然而，生成私钥时的随机性仍然关键。这种初始随机性确保私钥安全且不可预测，这对密码学系统的整体安全性至关重要。_
 
-#### Example of BLS Signature Generation and Verification:
+#### BLS 签名生成与验证示例：
 
-<figure class="diagram" style="width:80%">
+![展示 BLS 密钥对生成和验证的图表](https://epf.wiki/images/elliptic-curves/bls-alice.png)
+*理解 BLS 签名工作原理的视觉辅助*
 
-![Diagram showing key pair generation and verification for BLS](../../images/elliptic-curves/bls-alice.png)
-
-<figcaption>
-
-_Visual Aid to understand how BLS signatures work_
-
-</figcaption>
-</figure>
-
-Consider Alice creating a BLS signature. She starts with her private key $a$, and computes her public key $P$ using a generator point $G$ on the elliptic curve:
+考虑 Alice 创建 BLS 签名。她从她的私钥 $a$ 开始，并使用椭圆曲线上的生成元点 $G$ 计算她的公钥 $P$：
 
 $$P = aG$$
 
-She hashes her message and maps this hash to a point on the curve, $H(M)$. Her signature $S$ is then:
+她将消息哈希并映射到曲线上的一点 $H(M)$。她的签名 $S$ 为：
 
-$$S = a \times H(M)$$
+$$S = a \\times H(M)$$
 
-The signature is verified using the pairing function:
+使用配对函数验证签名：
 
 $$e(G, S) = e(P, H(M))$$
 
-This can be proven as:
+这可以证明如下：
 $$e(G,S)=e(G,a×H(m))=e(a×G,H(m))=e(P,H(M))$$
-where $G$ is the generator point on the elliptic curve.
+其中 $G$ 是椭圆曲线上的生成元点。
 
-This equation proves that the signature was indeed created by the holder of the private key corresponding to $P$.
+该等式证明了签名确实是由与 $P$ 对应的私钥持有者创建的。
 
-#### Example
+#### 示例
 
-For BLS signatures using a curve like BLS12-381 example values would look like:
+对于使用 BLS12-381 等曲线的 BLS 签名，示例值如下：
 
 ```
 Message: "Hello"
@@ -78,7 +70,7 @@ Public Key: bfdab807246849b76b7bdf5229619b9ccb33713633644a48b7ab3a7e67af7c1ae9d5
 Signature: dee15784b458419b4b8bbdbb13838da13c27dccab6ef50f0dcb4ff7352048c0b
 ```
 
-For ECDSA using a curve like secp256k1, there's an $R$ and an $S$ value, which produces a longer signature whose example values would look like:
+对于使用 secp256k1 等曲线的 ECDSA，有一个 $R$ 值和一个 $S$ 值，产生更长的签名，其示例值如下：
 
 ```
 Message: "Hello"
@@ -91,136 +83,102 @@ Signature:
     S: 8f22e3d95beb05517a1590b1c5af4b2eaabf8e231a799300fffa08208d8f4625
 ```
 
-### Aggregation in BLS:
+### BLS 中的聚合：
 
-A major advantage of BLS is the ability to aggregate multiple signatures into a single compact signature. This is particularly useful in scenarios involving multiple transactions or signers, greatly reducing the blockchain space and computational power needed for verifications. For example if there are 100 transactions, where signature for each one is represented by $S_i$ and each are associated with a public key of $P_i$ (and a message $M_i$), rather than storing 100 separate signatures, BLS allows combining them into one:
+BLS 的主要优势是能够将多个签名聚合成一个紧凑的签名。这在涉及多个交易或签名者的场景中特别有用，大大减少了验证所需的区块链空间和计算量。例如如果有 100 个交易，每个签名用 $S_i$ 表示，且每个关联一个公钥 $P_i$（以及消息 $M_i$），BLS 允许将它们合并为一个而不是存储 100 个独立签名：
 
-$$S = S_1 + S_2 + \ldots + S_{100}$$
+$$S = S_1 + S_2 + \\ldots + S_{100}$$
 
-which can then verified with (using a multiply operation):
+然后可以使用（乘法操作）验证：
 $$e(G,S)=e(P_1,H(M_1))⋅e(P_2,H(M_2))⋅…⋅e(P_{100},H(M_{100}))$$
 
-Verification of this aggregated signature would involve a corresponding aggregation of public keys and message hashes, maintaining the integrity and non-repudiation of all individual signatures.
+对此聚合签名的验证将涉及公钥和消息哈希的相应聚合，保持所有单个签名的完整性和不可否认性。
 
-## BLS Signatures in Ethereum
+## 以太坊中的 BLS 签名
 
-With respect to Blockchain, digital signatures typically leverage elliptic curve groups. Ethereum primarily employs [ECDSA](/wiki/Cryptography/ecdsa.md) signatures using the [secp256k1](https://www.secg.org/sec2-v2.pdf) curve, while the beacon chain protocol adopts BLS signatures based on the [BLS12-381](https://hackmd.io/@benjaminion/bls12-381) curve. Unlike ECDSA, BLS signatures utilize a unique feature of certain elliptic curves known as "[pairing](https://medium.com/@VitalikButerin/exploring-elliptic-curve-pairings-c73c1864e627)." This allows for the aggregation of multiple signatures, enhancing the efficiency of the consensus protocol. While ECDSA signatures are [much quicker](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-1.1) to process, the aggregative capability of BLS signatures offers significant advantages for blockchain scalability and consensus efficiency.
+就区块链而言，数字签名通常利用椭圆曲线群。以太坊主要使用 [ECDSA](/wiki/Cryptography/ecdsa.md) 签名和 [secp256k1](https://www.secg.org/sec2-v2.pdf) 曲线，而信标链协议采用基于 [BLS12-381](https://hackmd.io/@benjaminion/bls12-381) 曲线的 BLS 签名。与 ECDSA 不同，BLS 签名利用了某些椭圆曲线的一个独特特性，称为"[配对](https://medium.com/@VitalikButerin/exploring-elliptic-curve-pairings-c73c1864e627)"。这允许聚合多个签名，提高了共识协议的效率。虽然 ECDSA 签名处理[快得多](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-1.1)，但 BLS 签名的聚合能力为区块链可扩展性和共识效率提供了显著优势。
 
-The process to create and verify a BLS signature is straightforward, involving a series of steps that can be explained through diagrams, descriptions, and mathematical principles, although understanding the mathematical detail is not essential for practical application.
+创建和验证 BLS 签名的过程很直接，涉及一系列可以通过图表、描述和数学原理来说明的步骤，尽管理解数学细节对于实际应用并非必需。
 
-There are **4** component pieces of data within the BLS digital signature process.
+BLS 数字签名过程中有 **4** 个组成部分。
 
-- **The secret key:** Every participant in the protocol, specifically a validator, possesses a secret key, also referred to as a private key. This key is crucial for signing messages and maintaining the confidentiality of the validator's actions within the network.
-- **The public key:** Derived directly from the secret key using cryptographic methods, the public key, while linked to the secret key, cannot be reverse-engineered from it without extreme computational effort. It serves as the public identity of the validator within the protocol and is accessible to all participants.
-- **The message:** In Ethereum, messages consist of byte strings whose structure and purpose will be explored in further detail later in the context. Initially, understand these messages as basic data units processed within the blockchain protocol.
-- **The signature:** The signature is the result of the cryptographic process where the message is combined with the secret key. This signature uniquely identifies that a message was authored by the holder of the secret key. By verifying the signature with the corresponding public key, one can confirm that the message originated from a specific validator and has not been altered post-signing.
+- **密钥（secret key）：** 协议中的每个参与者，特别是验证者，都拥有一个密钥，也称为私钥。此密钥对于签名消息和维护验证者在网络内行动的机密性至关重要。
+- **公钥（public key）：** 使用密码学方法直接从密钥派生出来的公钥，虽然与密钥相关联，但如果没有极大的计算量，无法从中反推出密钥。它作为验证者在协议中的公共身份，对所有参与者可见。
+- **消息（message）：** 在以太坊中，消息由字节串组成，其结构和目的将在后续上下文中进一步探讨。初步可将这些消息理解为区块链协议内处理的基本数据单元。
+- **签名（signature）：** 签名是密钥与消息结合的密码学过程的结果。此签名唯一标识消息是由密钥持有者创建的。通过使用相应的公钥验证签名，可以确认消息源自特定验证者，并且在签名后未被更改。
 
-In Mathematical terms, we use 2 subgroups of BLS12-381 elliptic curve: $G_1$ defined over a base field $F_q$, and $G_2$ defined over the field extension $F_{q^2}$. The order of both the subgroups is $r$, a 77 digit prime number. The (arbitrarily chosen) generator of $G_1$ is $g_1$, and of $G_2$ is $g_2$.
+在数学术语中，我们使用 BLS12-381 椭圆曲线的 2 个子群：定义在基域 $F_q$ 上的 $G_1$，以及定义在域扩展 $F_{q^2}$ 上的 $G_2$。两个子群的阶都是 $r$，一个 77 位的素数。（任意选择的）$G_1$ 的生成元是 $g_1$，$G_2$ 的生成元是 $g_2$。
 
-1. The secret key, $sk$, is a number between $1$ and $r$ (technically the range includes $1$, but not $r$. However, very small values of $sk$ would be hopelessly insecure).
-2. The public key, $pk$, is $[sk]g_1$ where the square brackets represent scalar multiplication of the elliptic curve group point. The public key is therefore a member of the $G_1$ group.
-3. The message, $m$ is a sequence of bytes. During the signing process this will be mapped to some point $H(m)$ that is a member of the $G_2$ group.
-4. The signature, $\sigma$, is also a member of the $G_2$ group, namely $[sk]H(m)$.
+1. 密钥 $sk$ 是 $1$ 到 $r$ 之间的一个数字（技术上范围包括 $1$，但不包括 $r$。然而，非常小的 $sk$ 值将是极其不安全的）。
+2. 公钥 $pk$ 是 $[sk]g_1$，其中方括号表示椭圆曲线群点的标量乘法。因此公钥是 $G_1$ 群的成员。
+3. 消息 $m$ 是一个字节序列。在签名过程中，这将被映射到某个点 $H(m)$，该点是 $G_2$ 群的成员。
+4. 签名 $\\sigma$ 也是 $G_2$ 群的成员，即 $[sk]H(m)$。
 
-<figure class="diagram" style="margin-left:5%; width:80%">
+![展示我们如何在下图中描绘各组成部分的图表。](https://epf.wiki/images/elliptic-curves/bls-key.svg)
+*密钥的钥匙。这是我们将在下图中描绘各组成部分的方式。同一对象的不同变体用不同的阴影表示。密钥在数学上是标量；公钥是 $G_1$ 群成员；消息根被映射到 $G_2$ 群成员；签名是 $G_2$ 群成员。*
 
-![Diagram showing how we will depict the various components in the diagrams below.](../../images/elliptic-curves/bls-key.svg)
+### 密钥对
 
-<figcaption>
+密钥对是一个密钥及其公钥。它们一起将每个验证者与其行为不可辩驳地关联起来。
 
-_The key to the keys. This is how we will depict the various components in the diagrams below. Variants of the same object are hatched differently. The secret key is mathematically a scalar; public keys are_ $G_1$ _group members; message roots are mapped to_ $G_2$ _group members; and signatures are $G_2$ group members._
+每个验证者至少配备 1 个主"签名密钥"，用于例行操作如创建区块、提交证明等。根据其提款凭证（withdrawal credentials），验证者还可能有一个辅助的"提款密钥"，为增加安全性而离线存储。
 
-</figcaption>
-</figure>
+密钥应在范围 $[1,r)$ 内随机生成，遵循 [EIP-2333](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2333.md) 标准，该标准建议使用 IRTF BLS 签名标准草案中的 [`KeyGen`](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.3) 方法。虽然遵守此方法不是强制性的，但不鼓励偏离。大多数质押者使用以太坊基金会的 [`eth2.0-deposit-cli`](https://github.com/ethereum/eth2.0-deposit-cli) 工具生成他们的密钥。为了安全起见，密钥对通常存储在受密码保护的 [EIP-2335](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2335.md) keystore 文件中。
 
-### Key pairs
-
-A key pair is a secret key along with its public key. Together these irrefutably link each validator with its actions.
-
-Each validator is equipped with at least 1 primary "signing key" used for routine operations like creating blocks, making attestations etc. Depending on their withdrawal credentials, a validator may also have a secondary "withdrawal key," which is stored offline for added security.
-
-The secret key should be randomly generated within the range $[1,r)$, adhering to the [EIP-2333](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2333.md) standard, which recommends using the [`KeyGen`](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.3) method from the draft IRTF BLS signature standard. Although compliance with this method is not mandatory, deviating from it is generally discouraged. Most stakers generate their keys using the [`eth2.0-deposit-cli`](https://github.com/ethereum/eth2.0-deposit-cli) tool from the Ethereum Foundation. For security, key pairs are typically stored in password-protected [EIP-2335](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2335.md) keystore files.
-
-The secret key, $sk$, is a 32-byte unsigned integer. The public key, $pk$, is represented as a point on the $G_1$ curve and serialized in a compressed format as a 48-byte string within the protocol.
+密钥 $sk$ 是一个 32 字节的无符号整数。公钥 $pk$ 表示为 $G_1$ 曲线上的一个点，并在协议中以压缩格式序列化为 48 字节的字符串。
 
 <a id="img_bls_setup"></a>
 
-<figure class="diagram" style="margin-left:20%; width:50%">
+![公钥生成的图表。](https://epf.wiki/images/elliptic-curves/bls-setup.svg)
+*验证者随机生成其密钥。然后从中派生出公钥。*
 
-![Diagram of the generation of the public key.](../../images/elliptic-curves/bls-setup.svg)
+### 信标链中的签名
 
-<figcaption>
+在以太坊的信标链中，唯一需要签名的消息是对象的[哈希树根（hash tree roots）](https://eth2book.info/capella/part2/building_blocks/merkleization/)。这些根被称为"签名根（signing roots）"，是 32 字节的字符串。 [`compute_signing_root()`](/wiki/CL/functions#compute_signing_root) 函数将哈希树根与特定的"域（domain）"相结合，增强了安全性。
 
-_A validator randomly generates its secret key. Its public key is then derived from that._
+<!-- 定义并链接 CL 中的上下文（域分离和分叉）-->
 
-</figcaption>
-</figure>
+签名根被映射到 $G_2$ 群内的椭圆曲线点上。这个映射 $H(m)$（其中 $m$ 是签名根）将哈希转换为适合密码学操作的格式。这个复杂的过程在 [Hash-to-Curve 草案标准](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/)中有概述，但通常开发者依赖密码学库来高效处理此步骤。
 
-### Signing in the Beacon Chain
+#### 签名创建：
 
-In Ethereum's beacon chain, the only messages that get signed are the [hash tree roots](https://eth2book.info/capella/part2/building_blocks/merkleization/) of objects. These roots, called "signing roots," are 32-byte strings. The [`compute_signing_root()`](/wiki/CL/functions#compute_signing_root) function integrates the hash tree root with a specific "domain," enhancing the security.
-
-<!-- define and link context (domain separation and forks) in CL-->
-
-The signing root is mapped onto an elliptic curve point within the $G_2$ group. This mapping, $H(m)$, where $m$ is the signing root, transforms the hash into a format suitable for cryptographic operations. This complex process is outlined in the [Hash-to-Curve draft standard](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/), but typically, developers rely on cryptographic libraries to manage this step efficiently.
-
-#### Signature Creation:
-
-The actual signing involves multiplying the $G_2$ point $H(m)$ by the signer's secret key $sk$:
+实际的签名涉及将 $G_2$ 点 $H(m)$ 乘以签名者的密钥 $sk$：
 
 $$
-\sigma = [sk]H(m)
+\\sigma = [sk]H(m)
 $$
 
-The signature $\sigma$ thus generated is also part of the $G_2$ group and is typically compressed into a 96-byte string for practical use.
+如此生成的签名 $\\sigma$ 也是 $G_2$ 群的一部分，通常压缩为 96 字节的字符串以供实际使用。
 
-<figure class="diagram" style="margin-left:10%; width:65%">
+![签名消息的图表。](https://epf.wiki/images/elliptic-curves/bls-signing.svg)
+*验证者使用其密钥对消息签名，生成唯一的数字签名*
 
-![Diagram of signing a message.](../../images/elliptic-curves/bls-signing.svg)
+### 验证签名
 
-<figcaption>
+要验证签名，需要相应验证者的公钥。此密钥在信标状态（beacon state）中随时可用，可通过验证者索引访问，确保密钥检索简单可靠。
 
-_A validator uses their secret key to sign a message, producing a unique digital signature_
+验证过程很简洁：将消息、公钥和签名输入验证过程。如果签名是真实的——同时匹配公钥和消息——则被接受；否则由于潜在的损坏、密钥使用错误或消息篡改而被拒绝。
 
-</figcaption>
-
-</figure>
-
-### Verifying Signatures
-
-To validate a signature, the public key of the corresponding validator is necessary. This key is readily available in the beacon state, accessible by the validator's index, ensuring that key retrieval is straightforward and reliable.
-
-Verification is streamlined: input the message, public key, and signature into the verification process. If the signature is authentic—matching both the public key and the message—it is accepted; otherwise, it’s rejected due to potential corruption, incorrect key usage, or message tampering.
-
-Formally, this verification utilizes elliptic curve pairings. For the BLS12-381 curve, the pairing takes a point $P$ from $G_1$ and a point $Q$ from $G_2$, resulting in a point from group $G_T$:
+形式上，此验证利用椭圆曲线配对。对于 BLS12-381 曲线，配对将 $G_1$ 中的点 $P$ 和 $G_2$ 中的点 $Q$ 映射到群 $G_T$ 中的点：
 
 $$
-e: G_1 \times G_2 \rightarrow G_T
+e: G_1 \\times G_2 \\rightarrow G_T
 $$
 
-Pairings are expressed as $e(P, Q)$ and are crucial for validating the correspondence between the signature and the public key:
+配对表示为 $e(P, Q)$，对验证签名和公钥之间的对应关系至关重要：
 
 $$
-e(g_1, \sigma) = e(pk, H(m))
+e(g_1, \\sigma) = e(pk, H(m))
 $$
 
-This checks whether the message signed with the secret key $sk$ matches the observed signature $\sigma$, using the fundamental properties of [pairings](/wiki/Cryptography/bls#how-bls-works).
+这利用[配对](/wiki/Cryptography/bls#how-bls-works)的基本属性检查使用密钥 $sk$ 签名的消息是否与观察到的签名 $\\sigma$ 匹配。
 
-<figure class="diagram" style="margin-left:10%; width:80%">
+![验证签名的图表。](https://epf.wiki/images/elliptic-curves/bls-verifying.svg)
+*验证使用验证者的公钥和原始消息来确认签名的真实性。*
 
-![Diagram of verifying a signature.](../../images/elliptic-curves/bls-verifying.svg)
+**验证输出**：如果签名与公钥和消息都对齐，过程返回 `True`，确认其有效性。如果不符合，返回 `False`，表明签名的完整性或来源存在问题。
 
-<figcaption>
-
-_Verification uses the validator's public key and the original message to confirm the authenticity of the signature._
-
-</figcaption>
-
-</figure>
-
-**Verification Output**: The process returns `True` if the signature aligns with both the public key and the message, confirming its validity. If not, it returns `False`, indicating issues with the signature’s integrity or origin.
-
-## Resources and References
+## 资源与参考
 
 - [BLS and key-pairing](https://asecuritysite.com/encryption/js_bls)
 - [BLS signatures and key-pairing concepts](https://www.youtube.com/watch?v=cVgJBdM5E2M)
@@ -230,6 +188,6 @@ _Verification uses the validator's public key and the original message to confir
 - [formal IETF Draft Standard](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html)
 - [Pairing Friendly curves](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-10)
 - [Hashing to elliptic curves](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-09)
-- [ERC2333](https://github.com/ethereum/ercs/blob/master/ERCS/erc-2333.md) provides a method for deriving a tree-hierarchy of BLS12-381 keys based on an entropy seed.
-- [ERC2334](https://github.com/ethereum/ercs/blob/master/ERCS/erc-2334.md) defines a deterministic account hierarchy for specifying the purpose of keys.
-- [ERC2335](https://github.com/ethereum/ercs/blob/master/ERCS/erc-2335.md) specifies a standard keystore format for storage and interchange of BLS12-381 keys.
+- [ERC2333](https://github.com/ethereum/ercs/blob/master/ERCS/erc-2333.md) 提供了一种基于熵种子（entropy seed）派生 BLS12-381 密钥树层级的方法。
+- [ERC2334](https://github.com/ethereum/ercs/blob/master/ERCS/erc-2334.md) 定义了用于指定密钥用途的确定性账户层级。
+- [ERC2335](https://github.com/ethereum/ercs/blob/master/ERCS/erc-2335.md) 指定了用于存储和交换 BLS12-381 密钥的标准 keystore 格式。

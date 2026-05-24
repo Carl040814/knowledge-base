@@ -1,294 +1,244 @@
-# Networking
+# 网络
 
-The Consensus clients use [libp2p][libp2p-docs] as the peer-to-peer protocol, [libp2p-noise][libp2p-noise] for encryption, [discv5][discv5] for peer discovery, [SSZ][ssz] for encoding, and, optionally, [Snappy][snappy] for compression.
+共识客户端使用 [libp2p][libp2p-docs] 作为对等协议，[libp2p-noise][libp2p-noise] 进行加密，[discv5][discv5] 进行节点发现，[SSZ][ssz] 进行编码，以及可选的 [Snappy][snappy] 进行压缩。
 
-For those looking to deepen their understanding of libp2p, Study Group Session Week-5, [Lecture 19](https://epf.wiki/#/eps/day19) by Dapplion is a great resource.
+对于那些希望加深对 libp2p 理解的人，学习小组第 5 周，Dapplion 的[第 19 讲](https://epf.wiki/#/eps/day19)是一个极好的资源。
 
-## Specs
+## 规范
 
-The [Phase 0 -- Networking][consensus-networking] page specifies the network fundamentals, protocols, and rationale/design choices. The subsequent forks also specify the changes done in that respective fork.
+[Phase 0 -- 网络][consensus-networking] 页面详细说明了网络基础、协议以及设计理由/选择。后续的分叉也规定了各自分叉中所做的更改。
 
-## libp2p - P2P protocol
+## libp2p - P2P 协议
 
-[libp2p][libp2p-docs] is a protocol for peer-to-peer communication, originally developed for [IPFS](https://ipfs.io). [libp2p and Ethereum][libp2p-and-eth] is a great article for a deep-dive on the history of libp2p, and its adoption in the Consensus layer. It allows communication over multiple transport protocols like TCP, QUIC, WebRTC, etc.
+[libp2p][libp2p-docs] 是一种对等通信协议，最初为 [IPFS](https://ipfs.io) 开发。[libp2p 与以太坊][libp2p-and-eth] 是一篇深入探讨 libp2p 历史及其在共识层中采用情况的精彩文章。它允许通过多种传输协议进行通信，如 TCP、QUIC、WebRTC 等。
 
-<figure class="diagram" style="text-align:center">
+![libp2p_protocols](https://epf.wiki/images/cl/cl-networking/libp2p-protocols.png)
+*libp2p 中的各种协议。左：当前 右：使用 QUIC*
 
-![libp2p_protocols](../../images/cl/cl-networking/libp2p-protocols.png)
+libp2p 协议是一个多传输协议栈。
 
-<figcaption>
+1. **传输 (Transport)**：必须支持 TCP（传输控制协议），可以支持 [QUIC][quic]（快速 UDP 互联网连接），两者都必须允许传入和传出连接。TCP 和 QUIC 都支持 IPv4 和 IPv6，但为了更好的兼容性，要求支持 IPv4。
+2. **加密与身份识别**：[libp2p-noise][libp2p-noise] 安全通道用于加密，并使用 [multiaddr][multiaddr]（通常缩写为 multiaddr）作为将多层地址编码到单一"面向未来的"路径结构中的约定。
 
-_The various protocols which are a part of libp2p. Left: current Right: using QUIC_
+- **Multiaddress**：Multiaddress 定义了常见传输和覆盖协议的人类可读和机器优化的编码，并允许多层寻址组合使用。<br/>例如：下面给出的地址格式是"位置 multiaddr"（IP 和端口）和身份 multiaddr（libp2p 对等节点 ID）的组合。
 
-</figcaption>
-</figure>
+![multiaddr](https://epf.wiki/images/cl/cl-networking/multiaddr.png)
+*Multiaddr 格式*
 
-libp2p protocol is a multi-transport stack.
+3. **多路复用 (Multiplexing)**：多路复用允许多个独立的通信流在单个网络连接上并发运行。两种多路复用器在 libp2p 实现中很常见：[mplex][mplex] 和 [yamux][yamux]。它们的协议 ID 分别是：`/mplex/6.7.0` 和 `/yamux/1.0.0`。客户端必须支持 mplex，可以支持 yamux，优先使用后者。
+4. **消息传递**：为了在网络上传递消息，libp2p 实现了 [Gossipsub][gossipsub]（PubSub）和 [Req/Resp][req-resp]（请求/响应）。Gossipsub 使用主题 (topic)，Req/Resp 使用消息进行通信。
 
-1. **Transport** : It must support TCP (Transmission Control Protocol), may support [QUIC][quic] (Quick UDP Internet Connections) which must both allow incoming and outgoing connections. TCP and QUIC both support IPv4 and IPv6, but due for better compatibility IPv4 support is required.
-2. **Encryption and Identification** : [libp2p-noise][libp2p-noise] secure channel is used for encryption and uses [multiaddress][multiaddr] (often abbreviated as multiaddr) is the convention for encoding multiple layers of addressing into a single "future-proof" path structure.
+### **libp2p 协议栈**
 
-- **Multiaddress**: Multiaddress defines a human-readable and machine-optimized encodings of common transport and overlay protocols and allows many layers of addressing to be combined and used together.<br/> For example: the below given addressing format is a combination of "location multiaddr" (ip and port) and the identity multiaddr (libp2p peer id).
+| **层**                    | **协议**                                                                              | **用途**                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 🧠 **应用层**             | `pubsub`, `gossipsub`, `ping`, 自定义协议                                              | 运行用户定义或内建的逻辑（聊天、文件传输、发布-订阅等）     |
+| 🔀 **多路复用层**         | `yamux`, `mplex`                                                                      | 在单个连接上允许多个逻辑流                                 |
+| 🔐 **安全层**             | `noise`, `tls`, `secio` (已弃用)                                                       | 加密和认证对等连接                                        |
+| 🔌 **传输层**             | `tcp`, `websockets`, `quic` (具有多路复用和安全), `webrtc`, `webtransport`            | 处理机器之间的物理或虚拟数据传输                            |
+| 🌍 **NAT/中继层**         | `relay`, `dcutr`, `autonat`, `pnet`                                                   | 启用通过 NAT/防火墙或在私有网络中的连接                     |
+| 📡 **发现层**             | `mdns`, `kademlia`, `rendezvous`, `identify`                                          | 发现并了解网络上的对等节点                                 |
 
-<figure class="diagram" style="text-align:center">
+### 注意事项：
 
-![multiaddr](../../images/cl/cl-networking/multiaddr.png)
+- **并非所有协议都是必需的** — libp2p 是模块化的，你可以只选择你需要的。
+- 最小连接至少包括：`transport` + `security` + `multiplexing` + `application protocol`。
+- 当 NAT 阻止直接连接时，使用 `relay` 和 `dcutr`。
 
-<figcaption>
+libp2p 的关键特性：
 
-_Multiaddr format_
+1. **协议 ID：**是用于协议协商的唯一字符串标识符。其基本结构是：`/app/protocol/version`。以下是一些常见协议，都使用 protobuf 定义消息模式：
 
-</figcaption>
-</figure>
-
-3. **Multiplexing** : Multiplexing allows multiple independent communications streams to run concurrently over a single network connection. Two multiplexers are commonplace in libp2p implementations: [mplex][mplex] and [yamux][yamux]. Their protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`. Clients must support mplex and may support yamux with precedence given to the latter.
-4. **Message Passing** : To pass messages over the network libp2p implements [Gossipsub][gossipsub] (PubSub) and [Req/Resp][req-resp] (Request/Response). Gossipsub uses topics and Req/Resp uses messages for communication.
-
-### **libp2p Protocol Stack**
-
-| **Layer**                 | **Protocol(s)**                                                                       | **Purpose**                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 🧠 **Application Layer**  | `pubsub`, `gossipsub`, `ping`, custom protocols                                       | Run user-defined or built-in logic (chat, file transfer, pub-sub, etc.) |
-| 🔀 **Multiplexing Layer** | `yamux`, `mplex`                                                                      | Allow multiple logical streams over a single connection                 |
-| 🔐 **Security Layer**     | `noise`, `tls`, `secio` (deprecated)                                                  | Encrypt and authenticate peer connections                               |
-| 🔌 **Transport Layer**    | `tcp`, `websockets`, `quic` (has multiplexing and security), `webrtc`, `webtransport` | Handle physical or virtual data transfer between machines               |
-| 🌍 **NAT/Relay Layer**    | `relay`, `dcutr`, `autonat`, `pnet`                                                   | Enable connectivity through NAT/firewalls or in private networks        |
-| 📡 **Discovery Layer**    | `mdns`, `kademlia`, `rendezvous`, `identify`                                          | Find and learn about peers on the network                               |
-
-### Notes:
-
-- **Not all protocols are required** — libp2p is modular and you can choose only what you need.
-- A minimal connection includes at least: `transport` + `security` + `multiplexing` + `application protocol`.
-- `relay` and `dcutr` are used when NATs prevent direct connections.
-
-Key features of libp2p:
-
-1. **Protocol IDs:** are unique string identifiers used for protocol negotiation. Their basic structure is: `/app/protocol/version`. Some common protocols, all use protobuf to define message schemes, defined are:
-
-- Ping: `/ipfs/ping/1.0.0` is a simple protocol to test the connectivity and performance of connected peers
-- Identify : `/ipfs/id/1.0.0` allows to peers to exchange information about each other, mainly public key and know network addresses. Uses the following protobuf properties:
-  | Field | Type | Purpose |
+- Ping：`/ipfs/ping/1.0.0` 是一个简单的协议，用于测试已连接对等节点的连通性和性能
+- Identify：`/ipfs/id/1.0.0` 允许对等节点交换彼此的信息，主要是公钥和已知网络地址。使用以下 protobuf 属性：
+  | 字段                | 类型       | 用途                                                                    |
   |-------------------|-----------|-------------------------------------------------------------------------|
-  | `protocolVersion` | `string` | libp2p protocol version (e.g., `ipfs/1.0.0`) |
-  | `agentVersion` | `string` | Client info (like browser's user-agent, e.g., `go-ipfs/0.1.0`) |
-  | `publicKey` | `bytes` | Node's public key (for identity, optional if secure channel is used) |
-  | `listenAddrs` | `bytes[]` | Multiaddrs where the peer is listening |
-  | `observedAddr` | `bytes` | Your IP address as seen by the peer (helps with NAT detection) |
-  | `protocols` | `string[]`| List of supported application protocols (e.g., `/chat/1.0.0`) |
-  | `signedPeerRecord`| `bytes` | Authenticated version of `listenAddrs` for sharing with other peers |
+  | `protocolVersion` | `string`  | libp2p 协议版本（例如，`ipfs/1.0.0`）                                    |
+  | `agentVersion`     | `string`  | 客户端信息（类似浏览器的 user-agent，例如，`go-ipfs/0.1.0`）              |
+  | `publicKey`        | `bytes`   | 节点公钥（用于身份识别，如果使用安全通道则为可选）                         |
+  | `listenAddrs`      | `bytes[]` | 对等节点正在监听的 Multiaddr                                             |
+  | `observedAddr`     | `bytes`   | 对等节点看到的你的 IP 地址（有助于 NAT 检测）                              |
+  | `protocols`        | `string[]`| 支持的应用协议列表（例如，`/chat/1.0.0`）                                 |
+  | `signedPeerRecord` | `bytes`   | `listenAddrs` 的认证版本，用于与其他对等节点共享                           |
 
-- Identify/push: `/ipfs/id/push/1.0.0` same as "Identify" just that this is sent proactively and not in response to a request. It is useful to push a new address to its connected peers.
+- Identify/push：`/ipfs/id/push/1.0.0` 与 "Identify" 相同，只是这是主动发送的，而不是响应请求。它有助于向其已连接的对等节点推送新地址。
 
-**kad-dht** : libp2p uses Distributed Hash Table (DHT) based on the [Kademlia][kademlia] routing algorithm for its routing functionality.
+**kad-dht**：libp2p 使用基于 [Kademlia][kademlia] 路由算法的分布式哈希表 (Distributed Hash Table, DHT) 来实现其路由功能。
 
-2. **Handler Functions:** are invoked during a incoming stream
-3. **Bi-Directional Binary Stream:** the medium over which the libp2p protocol transpires
+2. **处理函数 (Handler Functions)：**在传入流期间被调用
+3. **双向二进制流 (Bi-Directional Binary Stream)：**libp2p 协议运行的媒介
 
-### **Peers**
+### **对等节点 (Peers)**
 
-#### Peer Ids
+#### 对等节点 ID (Peer Ids)
 
-[Peer Identity][peer-identity] is a unique reference to specific peer in the network and remain constant as long as the peer lives. Peer Ids are [multihashes][multihash], which are a self-describing values having the following format:<br/>
+[对等节点身份 (Peer Identity)][peer-identity] 是网络中特定对等节点的唯一引用，只要该对等节点存活就保持不变。对等节点 ID 是 [multihashes][multihash]，它们是具有以下格式的自描述值：<br/>
 
 `<varint hash function code><varint digest size in bytes><hash function output>`
 
-<figure class="diagram" style="text-align:center">
-
 ![multihash_format](https://raw.githubusercontent.com/multiformats/multihash/master/img/multihash.006.jpg)
+*Multihash 格式，十六进制*
 
-<figcaption>
+- 密钥编码在一个包含密钥类型和编码密钥的 protobuf 中。有 4 种指定的编码方法：RSA、Ed25519（必须）、Secp256k1、ECDSA。
+- 对等节点 ID 在文本中有 2 种字符串表示方式：`base58btc`（以 `QM` 或 `1` 开头）和作为 multibase 编码的 CID，libp2p 正在缓慢向后一种方式迁移。
 
-_Multihash Format , in hex_
+### **连接是如何建立的？**
 
-</figcaption>
-</figure>
+要理解连接建立的工作原理，请阅读此[规范][libp2p-connection]。
 
-- Keys are encoded in a protobuf containing key type and encoded key. There are 4 specified methods for encoding: RSA, Ed255199v(must), Secp256k1, ECDSA.
-- There are 2 ways of the string representation of peer IDs in text: `base58btc` (starts with `QM` or `1`) and as a multibase encoded CID with libp2p slowly moving to the later.
+![flowchart of setting up a connection](https://epf.wiki/images/cl/cl-networking/libp2p-connection.png)
+*建立连接的流程图*
 
-### **How a connection is established?**
+1. **发现 (Discovery)**：如何找到另一个对等节点？
 
-To understand how setting up a connection works, read this [specs][libp2p-connection].
+- `mdns`（多播 DNS）：零配置发现同一本地网络上的对等节点，非常简单。发送查询所有对等节点，接收响应和其他对等节点信息到本地数据库。
+- `rendezvous`：对等节点在共享的公共节点或服务器（集合点, rendezvous point）上注册自己，其他节点查询同一点以获取对等节点信息
+- `kademlia` (DHT)：用于全球发现的分布式哈希表。对等节点使用对等节点 ID 查询 DHT 以获取其最新的 multiaddr。
+- `identify`：允许对等节点在连接后交换元数据（地址、支持的协议、版本等）的协议
 
-<figure class="diagram" style="text-align:center">
+结果：我们现在有一个可通过 Peer ID 识别并通过 multiaddr（IP + 端口 + 协议栈）可达的对等节点列表
 
-![flowchart of setting up a connection](../../images/cl/cl-networking/libp2p-connection.png)
+2. **传输 (Transport)**：如何连接到对等节点？
 
-<figcaption>
+- `TCP`：最基本的传输方式，可靠但可能被 NAT/防火墙阻止
+- `WebSockets`：基于 HTTP 的 TCP，对 NAT/防火墙友好
+- `QUIC`：基于 UDP，连接建立更快，原生支持多路复用和加密（TLS 1.3）
+- `WebRTC`：使两个私有节点（例如，两个浏览器）能够建立直接连接
+- `WebTransport`：建立到服务器的流多路复用和双向连接，运行在 HTTP/3 连接之上，并使用 HTTP/2 作为后备
 
-_flowchart of setting up a connection_
+如果对等节点在 NAT 后面（直接连接失败时）：
 
-</figcaption>
-</figure>
+- `relay`：类似于 TURN，通过另一个对等节点路由
+- `dcutr`（通过中继的直接连接升级, Direct Connection Upgrade Through Relay）：用于尝试用直接连接替换中继连接，使用[打洞 (hole punching)][hole-punching]技术。它涉及双方同时进行拨号尝试。
 
-1. **Discovery**: How to find another peer?
+3. **加密 (Encryption)**：如何使连接私有且经过认证？
 
-- `mdns` (Multicast DNS) : discover peers on the same local network with zero configuration, very simple. Send query for all peers, receive response and other peers' information into local database.
-- `rendezvous` : peers register themselves at a shared common peer or server (rendezvous point) and others query the same point to get peer information
-- `kademlia` (DHT) : A distributed hash table for global discovery. Peer query the DHT with peer ID to get its latest multiaddrs.
-- `identify` : protocol that allows peers to exchange metadata (addresses, protocols supported, version etc) after connecting
+- `noise`：构建安全协议的框架，快速，许多实现的默认选择，Noise XX 握手用于相互认证。
+- `tls`（传输层安全, Transport Layer Security）：强大的安全保障，使用对等节点密钥进行相互认证
+- `secio`：由于复杂性和比 Noise/TLS 低的安全保障而弃用。
 
-Result: We now have a list of peers identifiable with Peer ID and reachable via multiaddrs (IP + port + protocol stack)
+4. **多路复用 (Multiplexing)**：如何在同一个连接上打开多个逻辑流？
 
-2. **Transport** : How to connect to peers?
+- `yamux`：简单、快速，目前是许多实现中的默认选择。
+- `mplex`：轻量级且较旧
 
-- `TCP` : most basic transport, reliable but may be blocked by NAT/firewalls
-- `WebSockets` : TCP over HTTP, are NAT/firewall friendly
-- `QUIC` : UDP based, faster connection setup, supports multiplexing and encryption (TLS 1.3) natively
-- `WebRTC` : enable two private nodes (e.g. two browsers) to establish a direct connection
-- `WebTransport` : establish a stream-multiplexed and bidirectional connection to servers, run on top of a HTTP/3 connection with a fallback using HTTP/2
+5. **应用 (Application)**：在上述设置之上运行应用协议
 
-If the peer is behind NAT (when direct connection fails):
+- `ping`：基本的活跃性检查，测量往返时间
+- `pubsub`、`gossipsub`、`episub`：用于广播消息
+- 实现定义的自定义协议
 
-- `relay` : it is like TURN , routes through another peer
-- `dcutr` (Direct Connection Upgrade Through Relay) : used to try and replace a relay connection with a direct one, using [hole punching][hole-punching]. It involves simultaneous dial attempts from both peers.
+### GossipSub 提供了什么优化？
 
-3. **Encryption** : How to make the connection private and authenticated?
+**方法 1：** 维护一个全连接网格（所有对等节点彼此 1:1 连接），这种方式扩展性差（O(n^2)）。为什么扩展性差？每个节点可能从其他 (n-1) 个节点接收到相同的消息，因此浪费了大量带宽。如果消息是区块数据，那么浪费的带宽呈指数级增长。
 
-- `noise` : framework for building security protocols, fast, default choice for many, Noise XX handshake for mutual authentication.
-- `tls` (Transport Layer Security) : strong security guarantees, mutual authentication done using peer's key
-- `secio` : deprecated due to complexity and lower assurance compared to Noise/TLS.
+**方法 2：** 使用 Pubsub（发布-订阅模型）消息模式，发送者（发布者）不直接将消息发送给接收者（订阅者）。相反，消息发布到一个公共通道（或主题），订阅者从该通道接收消息，而无需与发布者直接交互。节点为某个主题与其他特定数量的节点建立网格连接，再与其他节点建立不同的网格连接。因此，实现了更高效的消息传递。
 
-4. **Multiplexing** : How to open multiple logical streams over the same connection?
+![gossipsub_optimization](https://epf.wiki/images/cl/cl-networking/gossipsub_optimization.png)
+*Gossipsub 优化*
 
-- `yamux` : Simple, fast, and currently the default in many implementations.
-- `mplex` : lightweight and older
+###### **Gossipsub：TODO**
 
-5. **Application** : run application protocols over the above setup
+###### **Req/Resp：TODO**
 
-- `ping` : basic liveliness check ,measure round-trip time
-- `pubsub`, `gossipsub`, `episub` : for broadcasting messages
-- Custom protocols that the implementation defines
+###### **QUIC：TODO**
 
-### What optimization does GossipSub provide?
+## libp2p-noise - 加密
 
-**Approach 1:** Maintain a fully connected mesh (all peers connected to each other 1:1), which scales poorly (O(n^2)). Why this scales poorly? Each node may receive the same message from other (n-1) nodes , hence wasting a lot of bandwidth. If the message is a block data, then the wasted bandwidth is exponentially large.
+[Noise 框架][noise-framework] 本身不是一个协议，而是一个设计密钥交换协议的框架。[规范][noise-specification] 是一个很好的起点。
 
-**Approach 2:** Pubsub (Publish-Subscribe Model) messaging pattern is used where senders (publishers) don’t send messages directly to receivers (subscribers). Instead, messages are published to a common channel (or topic), and subscribers receive messages from that channel without direct interaction with the publisher. The nodes mesh with a particular number of other nodes for a topic, and those with other nodes. Hence, allowing more efficient message passing.
+有许多[模式][noise-patterns]描述了密钥交换过程。共识客户端中使用的模式是 [`XX`][noise-xx]（传输-传输），意味着发起者和响应者在密钥交换的初始阶段都传输其公钥。
 
-<figure class="diagram" style="text-align:center">
+## ENR (Ethereum Node Records，以太坊节点记录)
 
-![gossipsub_optimization](../../images/cl/cl-networking/gossipsub_optimization.png)
+[以太坊节点记录 (Ethereum Node Records, ENR)][ENR] 提供了一种结构化、灵活的方式来存储和共享以太坊对等网络中节点身份和连接性详情。它是一种面向未来的格式，允许在新对等节点之间更容易地交换识别信息，并且是以太坊节点的首选[网络地址格式][network-add-format]。
 
-<figcaption>
+其核心组件包括：
 
-_Gossipsub Optimization_
+1. **签名 (Signature)**：每条记录使用身份方案（例如，secp256k1）签名以确保真实性。
+2. **序列号 (Sequence Number, seq)**：一个 64 位无符号整数，每当记录更新时递增，使对等节点能够确定最新版本。
+3. **键/值对 (Key/Value Pairs)**：该记录以键值对的形式保存各种连接性详情。
 
-</figcaption>
-</figure>
-
-###### **Gossipsub : TODO**
-
-###### **Req/Resp : TODO**
-
-###### **QUIC : TODO**
-
-## libp2p-noise - Encryption
-
-The [Noise framework][noise-framework] is not a protocol itself, but a framework for designing key exchange protocols. The [specification][noise-specification] is a great place to start.
-
-There are many [patterns][noise-patterns] which describe the key exchange process. The pattern used in the consensus clients is [`XX`][noise-xx] (transmit-transmit), meaning that both the initiator, and responder transmit their public key in the initial stages of the key exchange.
-
-## ENR (Ethereum Node Records)
-
-[Ethereum Node Records][ENR] provide a structured, flexible way to store and share node identity and connectivity details in Ethereum’s peer-to-peer network. It is a future-proof format that allows easier exchange of identifying information between new peers and is the preferred [network address format][network-add-format] for Ethereum nodes.
-
-Its core components are:
-
-1. **Signature**: Each record is signed using an identity scheme (e.g., secp256k1) to ensure authenticity.
-2. **Sequence Number** (seq): A 64-bit unsigned integer that increments whenever the record is updated, allowing peers to determine the latest version.
-3. **Key/Value Pairs**: The record holds various connectivity details as key-value pairs.
-
-In its text form, the RLP of ENR is encoded in base64 and can be shared across clients as a string, e.g.:
+在其文本形式中，ENR 的 RLP 编码以 base64 编码，可以作为字符串在客户端之间共享，例如：
 `
 enr:-Jq4QOXd31zNJBTBAT0ZZIRWH4z_NmRhnmAFfwNan0zr_-IUUAsOTbU_Lhzh4BSq8UknFGvr1rXQUYK0P-_ZUVenXkABhGV0aDKQaGGQMVAAEBv__________4JpZIJ2NIJpcIRBbZouiXNlY3AyNTZrMaEDxEArICqVUZNxhUxBYHZjzsm4KxqraeSION3yYorLZSuDdWRwgiMp
 `
 ## discv5
 
-Discovery Version 5 [(discv5)][discv5] (Protocol version v5.1) is a UDP-based node discovery protocol. At a protocol level, it is a Kademlia-inspired DHT that stores and relays signed Ethereum Node Records (ENRs) rather than arbitrary key-value pairs. Each node organizes other nodes by XOR distance between node IDs in a routing table of k-buckets, letting it keep track of nearby peers in the address space and progressively improve its view of the network.
+发现版本 5 [(discv5)][discv5]（协议版本 v5.1）是一种基于 UDP 的节点发现协议。在协议层面，它是一个受 Kademlia 启发的 DHT，存储和中继经过签名的以太坊节点记录 (ENR)，而不是任意的键值对。每个节点通过节点 ID 之间的 XOR 距离在 k-bucket 的路由表中组织其他节点，使其能够跟踪地址空间中附近的对等节点并逐步改善其对网络的视图。
 
-Peer discovery in discv5 happens through iterative lookups. A node starts with the closest peers it already knows, sends `FINDNODE` queries, receives `NODES` responses, and continues querying closer results until the lookup converges on the nearest reachable nodes for a target. This same lookup machinery underpins network sampling, service discovery, and ENR resolution. Unlike libp2p, which is responsible for maintaining peer connections and carrying protocol traffic, discv5 focuses on maintaining a searchable discovery index of live nodes and their advertised capabilities.
+discv5 中的对等节点发现通过迭代查找进行。节点从它已知的最近对等节点开始，发送 `FINDNODE` 查询，接收 `NODES` 响应，并继续查询更接近的结果，直到查找收敛到目标最近的、可达的节点。这种相同的查找机制支撑着网络采样、服务发现和 ENR 解析。与负责维护对等连接和承载协议流量的 libp2p 不同，discv5 专注于维护一个可搜索的活跃节点及其通告能力的发现索引。
 
-Its three core functions are:
+其三个核心功能是：
 
-- Sampling the set of all live participants by walking the discovery DHT and refreshing the local routing table over time
-- Searching for participants providing a certain service through topic advertisements and lookups around the topic hash
-- Authoritative resolution of node records by retrieving the latest ENR for a known node ID and comparing ENR sequence numbers
+- 通过遍历发现 DHT 并随时间刷新本地路由表来采样所有活跃参与者的集合
+- 通过主题广告 (topic advertisement) 和围绕主题哈希的查找来搜索提供特定服务的参与者
+- 通过检索已知节点 ID 的最新 ENR 并比较 ENR 序列号来进行节点记录的权威解析
 
-In Ethereum consensus clients, discv5 typically runs alongside libp2p, which handles peer connections and protocol traffic.
+在以太坊共识客户端中，discv5 通常与 libp2p 一起运行，后者处理对等连接和协议流量。
 
-<figure class="diagram" style="text-align:center">
+![discv5](https://epf.wiki/images/cl/cl-networking/discv5.png)
+*discv5*
 
-![discv5](../../images/cl/cl-networking/discv5.png)
+### 查找流程
 
-<figcaption>
+discv5 查找是在节点 ID 空间上的迭代搜索，而不是向整个网络的广播。发起者反复向已经接近目标的节点询问更接近的节点，这赋予了 Kademlia 对数级的扩展特性，并让发现表在正常操作中作为副作用不断改善。
 
-_discv5_
+1. 节点从其本地路由表中选择已知的、最接近目标节点 ID 的对等节点。
+2. 它向这些对等节点的一小部分并发集合发送 `FINDNODE` 请求。
+3. 响应的对等节点返回 `NODES` 消息，其中包含接近查询距离的 ENR。
+4. 发起者将返回的 ENR 合并到其本地视图中，按到目标的 XOR 距离排序，并继续查询更近的候选节点。
+5. 一旦节点已经查询了其所了解到的最近的、可达的候选节点，查找就收敛了。
 
-</figcaption>
-</figure>
+这种相同的模式被复用于多个任务。随机目标让节点可以遍历 DHT 并采样活跃参与者。已知的节点 ID 让调用者可以解析该节点的最新 ENR。基于主题的发现复用了围绕主题哈希的 Kademlia 查找，使节点可以找到通告特定服务的对等节点。
 
-### Lookup flow
+### discv5 与 libp2p
 
-A discv5 lookup is an iterative search over node ID space, not a broadcast to the whole network. The initiator repeatedly asks nodes that are already close to the target for even closer nodes, which gives Kademlia its logarithmic scaling properties and lets the discovery table improve as a side effect of normal operation.
+在共识客户端中，discv5 和 libp2p 解决相邻但不同的问题。discv5 是发现平面：它维护一个签名节点记录的可搜索索引，验证活跃性，并帮助节点了解谁存在以及如何到达它们。libp2p 是传输和消息平面：一旦知道了有用的对等节点，客户端就通过 libp2p 拨号连接它们，然后通过 gossip 和请求/响应协议交换信标链流量。
 
-1. A node selects the closest known peers to a target node ID from its local routing table.
-2. It sends `FINDNODE` requests to a small concurrent set of those peers.
-3. Responding peers return `NODES` messages containing ENRs near the queried  distance.
-4. The initiator merges the returned ENRs into its local view, sorts them by XOR distance to the target, and continues querying closer candidates.
-5. The lookup converges once the node has queried the closest reachable candidates it has learned about.
+这种分离很重要，因为发现和传输有不同的约束。discv5 使用 UDP 和针对与大量远程节点进行许多短交互而优化的加密握手。相比之下，libp2p 维护更长寿命的认证连接，并承载实际的应用协议，如 gossipsub、ping 和 req/resp。在实践中，discv5 回答"接下来我应该尝试哪些对等节点？"，而 libp2p 回答"如何与它们维护会话并交换协议消息？"
 
-This same pattern is reused for multiple tasks. Random targets let a node walk the DHT and sample live participants. A known node ID lets the caller resolve the freshest ENR for that node. Topic-based discovery reuses Kademlia lookups around the hash of a topic so nodes can find peers advertising a specific service.
+### 安全性与握手
 
-### discv5 and libp2p
+discv5 不会将发现流量作为纯未认证的 UDP 数据包发送。普通数据包是加密和认证的，当节点无法从某个端点 `decrypt` 消息时，它回复一个 `WHOAREYOU` 挑战，而不是盲目返回发现数据。这迫使发起者证明对其节点身份的控制，并在接收者接受诸如 `FINDNODE` 的请求之前建立新的会话密钥。
 
-In consensus clients, discv5 and libp2p solve adjacent but different problems. discv5 is the discovery plane: it maintains a searchable index of signed node records, verifies liveness, and helps nodes learn who exists and how to reach them. libp2p is the transport and messaging plane: once useful peers are known, the client dials them through libp2p and then exchanges beacon-chain traffic over gossip and request/response protocols.
+在高层次上，交换过程如下：
 
-This separation matters because discovery and transport have different constraints. discv5 uses UDP and an encrypted handshake optimized for many short interactions with a large set of remote nodes. libp2p, by contrast, maintains longer-lived authenticated connections and carries the actual application protocols such as gossipsub, ping, and req/resp. In practice, discv5 answers "which peers should I try next?" while libp2p answers "how do I maintain a session with them and exchange protocol messages?"
+1. 节点 A 向节点 B 发送一个普通请求，例如 `FINDNODE`。
+2. 如果节点 B 没有该端点的有效会话，它回复 `WHOAREYOU`，携带一个 nonce 和它当前知道的关于 A 的 ENR 序列号。
+3. 节点 A 将请求作为握手数据包重新发送，包括身份签名、临时公钥，以及当 B 需要更新的副本时的 ENR。
+4. 双方派生会话密钥，认证数据包，并继续使用加密的请求/响应消息。
 
-### Security and handshake
+这个握手同时服务于多个目的。它降低了放大攻击风险，因为未知的发送者首先只收到一个小的挑战数据包。它将会话状态绑定到特定的节点 ID 和 UDP 端点，使伪造和跨端点重放更加困难。它还为节点提供了 ENR 同步的内建路径：当接收者通告一个较旧的 `enr-seq` 时，发送者可以在握手期间附加其更新的记录，或在稍后通过 `PING`/`PONG` 和显式的 ENR 检索来刷新它。
 
-discv5 does not send discovery traffic as plain unauthenticated UDP. Ordinary packets are encrypted and authenticated, and when a node cannot `decrypt` a message from an endpoint it answers with a `WHOAREYOU` challenge instead of blindly returning discovery data. This forces the initiator to prove control of its node identity and establish fresh session keys before the recipient accepts requests such as `FINDNODE`.
+即便有了这种密码学机制，UDP 仍然是一个刻意的选择。发现流量由许多与大量远程节点的短交互、频繁的表刷新和重复的活跃性检查组成。使用 UDP 使这些交换保持轻量级，并避免了仅为询问几个发现问题而建立完整传输会话的连接管理开销。代价是数据包可能丢失或乱序到达，因此 discv5 的设计围绕短超时、通过新查找的重试，以及一个持续刷新而非假设在任何时刻都完美的路由表。
 
-At a high level, the exchange works as follows:
+## SSZ - 编码
 
-1. Node A sends an ordinary request, for example `FINDNODE`, to node B.
-2. If node B has no valid session for that endpoint, it replies with `WHOAREYOU`, carrying a nonce and the ENR sequence number it currently knows for A.
-3. Node A re-sends the request as a handshake packet, including an identity signature, an ephemeral public key, and its ENR when B needs a newer copy.
-4. Both sides derive session keys, authenticate the packet, and continue with encrypted request/response messages.
+[简单序列化 (Simple Serialize, SSZ)][ssz] 取代了执行层上使用的 [RLP][rlp] 序列化，在共识层中除对等发现协议以外的所有地方使用。SSZ 被设计为确定性的，并且能够高效地进行 Merkle 化。SSZ 可以被认为有两个组件：一个序列化方案和一个设计为与序列化数据结构高效配合的 Merkle 化方案。
 
-This handshake serves several purposes at once. It reduces amplification risk because an unknown sender first receives only a small challenge packet. It ties session state to a specific node ID and UDP endpoint, which makes spoofing and cross-endpoint replay harder. It also gives nodes a built-in path for ENR synchronization: when the recipient advertises an older `enr-seq`, the sender can attach its newer record during the handshake or later refresh it through `PING`/`PONG` and explicit ENR retrieval.
+## Snappy - 压缩
 
-UDP is still a deliberate choice even with this cryptographic machinery. Discovery traffic consists of many short-lived interactions with many remote nodes, frequent table refreshes, and repeated liveness checks. Using UDP keeps those exchanges lightweight and avoids the connection-management overhead of establishing full transport sessions just to ask a few discovery questions. The tradeoff is that packets may be lost or arrive out of order, so discv5 is designed around short timeouts, retry through new lookups, and a routing table that is continuously refreshed rather than assumed to be perfect at any single moment.
+[Snappy][snappy] 是 Google 工程师于 2011 年创建的压缩方案。其主要设计考虑优先考虑压缩/解压速度，同时仍具有合理的压缩比。
 
-## SSZ - Encoding
+## 相关研发
 
-[Simple serialize (SSZ)][ssz] replaces the [RLP][rlp] serialization used on the execution layer everywhere across the consensus layer except the peer discovery protocol. SSZ is designed to be deterministic and also to Merkleize efficiently. SSZ can be thought of as having two components: a serialization scheme and a Merkleization scheme that is designed to work efficiently with the serialized data structure.
+- [EIP-7594][peerdas-eip] - 对等数据可用性采样 (Peer Data Availability Sampling, PeerDAS)
 
-## Snappy - Compression
+  一种网络协议，允许信标节点执行数据可用性采样 (Data Availability Sampling, DAS)，以确保 blob 数据已可用，而只需下载数据的一个子集。
 
-[Snappy][snappy] is a compression scheme created by engineers at Google in 2011. Its main design considerations prioritize compression/decompression speed, while still having a reasonable compression ratio.
-
-## Related R&D
-
-- [EIP-7594][peerdas-eip] - Peer Data Availability Sampling (PeerDAS)
-
-  A networking protocol that allows beacon nodes to perform data availability
-  sampling (DAS) to ensure that blob data has been made available while
-  downloading only a subset of the data.
-
-  - [Consensus Specs][peerdas-specs]
+  - [共识规范][peerdas-specs]
   - [ETH Research][peerdas-ethresearch]
 
-## Resources
+## 资源
 
 - [ENR rust docs][enr-rust-docs]
-- [Eth1+Eth2 client relationship][eth1+2-client]
-- Libp2p, ["docs"][libp2p-docs] and ["specs"][libp2p-specs]
-- Technical Report, ["Gossipsub-v1.1 Evaluation Report"][gossipsub-report]
-- [Libp2p resource][PLN-launchpad]
-- [Libp2p tutorial][libp2p-tutorial]
-- [Hole Punching][hole-punching]
+- [Eth1+Eth2 客户端关系][eth1+2-client]
+- Libp2p, ["docs"][libp2p-docs] 和 ["specs"][libp2p-specs]
+- 技术报告, ["Gossipsub-v1.1 Evaluation Report"][gossipsub-report]
+- [Libp2p 资源][PLN-launchpad]
+- [Libp2p 教程][libp2p-tutorial]
+- [打洞 (Hole Punching)][hole-punching]
 
 [consensus-networking]: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md
 [libp2p-and-eth]: https://blog.libp2p.io/libp2p-and-ethereum/

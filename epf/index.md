@@ -8,9 +8,10 @@
 
 ## 目录
 
-- [Ethereum Protocol Fellowship Cohort 7](epf.md)
-- [<!-- markdownlint-disable MD013 -->](pectra-faq.md)
-- [<!-- markdownlint-disable MD013 -->](wiki-intro.md)
+- [以太坊协议奖学金第七期 (Ethereum Protocol Fellowship Cohort 7)](epf.md)
+- [开始这里 | 如何学习 (Start here | How to study)](how-to-study.md)
+- [Pectra 升级问答 (Pectra FAQ)](pectra-faq.md)
+- [欢迎来到协议维基 (Welcome to Protocol Wiki)](wiki-intro.md)
   ### CL
   - [Simple Serialize (SSZ)](CL/SSZ.md)
   - [Beacon Chain Spec and APIs](CL/beacon-api.md)
@@ -98,4 +99,4 @@
 
 ---
 
-**总计 72 个文件**
+**总计 73 个文件**

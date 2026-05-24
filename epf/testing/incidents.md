@@ -1,39 +1,38 @@
-# Notable mainnet incidents
+# 著名主网事件 (Notable mainnet incidents)
 
-> :warning: This article is a [stub](https://en.wikipedia.org/wiki/Wikipedia:Stub), help the wiki by [contributing](/contributing.md) and expanding it.
-> Incidents are the disruptions, vulnerabilities and attacks faced by the network which has questioned it's stability and security. Below are some incidents that affected the network and their sources.
+> :warning: 本文是一个待完善的草稿 (stub)，欢迎通过 [做出贡献](/contributing.md) 并对其进行扩展来帮助维基。
+> 事件是指网络所面临的中断、漏洞和攻击，这些事件曾让人们对其稳定性和安全性产生过疑问。以下是影响网络的一些事件及其来源。
 
-## Overview
+## 概述 (Overview)
 
-The Ethereum network has faced various challenges and incidents throughout its history. These incidents have helped improve the network's resilience and security through careful analysis and implementation of preventive measures. This page documents notable incidents that have affected the Ethereum.
+以太坊网络在其历史上面临过各种挑战和事件。通过仔细的分析和预防措施的实施，这些事件帮助提高了网络的弹性和安全性。本页面记录了影响以太坊的著名事件。
 
-For a comprehensive list of Ethereum incidents and their detailed analysis, you can refer to the [EthStaker Incidents Page](https://ethstaker.org/incidents).
+如需查看以太坊事件的完整列表及其详细分析，您可以参考 [EthStaker 事件页面 (EthStaker Incidents Page)](https://ethstaker.org/incidents)。
 
-## Recent Incidents
+## 近期事件 (Recent Incidents)
 
-- [Post-Mortem, Holesky Finality Issue (24/02/2025)](https://github.com/ethereum/pm/blob/master/Pectra/holesky-postmortem.md)
-  In February 2025, after Pectra upgrade on Holesky testnet, blocks were not getting finalized due to many EL clients having incorrect deposit contract address configurations. This caused some EL clients to reject the invalid blocks while others accepted them, resulting in network split.
+- [Holesky 最终性问题事后分析 (Post-Mortem, Holesky Finality Issue) - 2025/02/24](https://github.com/ethereum/pm/blob/master/Pectra/holesky-postmortem.md)
+  在 2025 年 2 月 Holesky 测试网进行 Pectra 升级后，由于许多执行层 (EL) 客户端配置了错误的存款合约地址，导致区块无法达成最终性 (finality)。这导致部分执行层客户端拒绝了无效区块，而其他客户端接受了它们，从而导致了网络分裂 (network split)。
 
-- [Post-Mortem, Blob Propagation Issues (27/03/2024)](https://gist.github.com/benhenryhunter/687299bcfe064674537dc9348d771e83)
-  In March 2024, after Dencun upgrade, blobs attached to blocks from certain builders propagated too slowly over p2p which caused a client implementation to miss few slots.
+- [Blob 传播问题事后分析 (Post-Mortem, Blob Propagation Issues) - 2024/03/27](https://gist.github.com/benhenryhunter/687299bcfe064674537dc9348d771e83)
+  在 2024 年 3 月 Dencun 升级后，来自某些构建者 (builders) 的区块所附带的 Blob 在点对点 (p2p) 网络上传播速度过慢，导致某客户端实现错过了几个时隙 (slots)。
 
-- [Post-Mortem Report: Ethereum Mainnet DOS Incident (07/02/2024)](https://blog.ethereum.org/2024/03/21/sepolia-incident)
-  It was discovered that there was a possibility for a Denial-of-service attack dating from when the merge happened to the dencun hard fork. An attacker could create a block exceeding the specified limit of 5mb and adding multiple transactions into the block each not up to 128kb while also making sure that the transactions within the block have a collective gas which is below 30 million. With this action most nodes will reject the blocks which will lead to minority nodes acceptance creating forked blocks and missed proposer rewards.
+- [主网拒绝服务 (DOS) 事件事后分析报告：以太坊主网拒绝服务事件 - 2024/02/07](https://blog.ethereum.org/2024/03/21/sepolia-incident)
+  研究发现，从合并 (Merge) 发生到 Dencun 硬分叉 (hard fork) 期间，存在遭受拒绝服务攻击 (Denial-of-service, DOS) 的可能性。攻击者可以创建一个超过 5MB 指定限制的区块，并在区块中添加多个大小均不超过 128KB 的交易，同时确保区块内交易的总体 Gas 低于 3000 万。通过这种操作，大多数节点会拒绝这些区块，从而导致少数派节点接受它们，产生分叉区块并导致提议者错失奖励。
 
-- [Post-Mortem Report: Ethereum Mainnet Finality (05/11/2023)](https://medium.com/offchainlabs/post-mortem-report-ethereum-mainnet-finality-05-11-2023-95e271dfd8b2)
-  The Mainnet had some disruptions, which led to blocks not getting produced leading to a significant delay in transactions reaching finality, this continued for two days and resulted in an inactivity consequence, the network fully recovered without intervention.
+- [主网最终性事后分析报告：以太坊主网最终性 - 2023/11/05](https://medium.com/offchainlabs/post-mortem-report-ethereum-mainnet-finality-05-11-2023-95e271dfd8b2)
+  主网发生了一些中断，导致无法出块，进而导致交易达成最终性 (finality) 出现严重延迟。这种情况持续了两天，并导致了不活跃惩罚 (inactivity leak)，网络最终在没有人工干预的情况下完全恢复。
 
-- [Reth Mainnet State Root Mismatch (01/09/2025](https://laced-king-de5.notion.site/Incident-Post-Mortem-Reth-Mainnet-State-Root-Mismatch-26732f2c348480dea8b8c2a8753696dc)
-  A bug in Reth’s handling of trie updates caused trie tables in Reth nodes to contain incorrect information, resulting in nodes computing an incorrect state root at later blocks. 
+- [Reth 主网状态根不匹配 (Reth Mainnet State Root Mismatch) - 2025/09/01](https://laced-king-de5.notion.site/Incident-Post-Mortem-Reth-Mainnet-State-Root-Mismatch-26732f2c348480dea8b8c2a8753696dc)
+  Reth 对特里树更新 (trie updates) 处理的漏洞导致 Reth 节点中的 trie 表包含错误信息，致使节点在后续区块计算出错误的状态根 (state root)。
 
-## Historical Incidents
+## 历史事件 (Historical Incidents)
 
-- [Post-Mortem Report: Minority Split (2021-08-27)](https://github.com/ethereum/go-ethereum/blob/master/docs/postmortems/2021-08-22-split-postmortem.md)
-  This happened when Geth tried to assign data back into memory after the `datacopy` operation. Instead of saving the data in a new location, it accidentally overwrote the original data, causing it to become corrupted.
+- [少数派分裂事后分析报告 (Post-Mortem Report: Minority Split) - 2021/08/27](https://github.com/ethereum/go-ethereum/blob/master/docs/postmortems/2021-08-22-split-postmortem.md)
+  当 Geth 尝试在 `datacopy` 操作之后将数据分配回内存时发生了这一事件。它没有将数据保存在新位置，而是意外覆盖了原始数据，导致其损坏。
 
-- [The DAO Attack (2016)](https://www.coindesk.com/learn/understanding-the-dao-attack)
-  One of the most significant incidents in Ethereum's history, where a vulnerability in The DAO smart contract was exploited, leading to the loss of approximately 3.6M ETH. This incident ultimately led to a hard fork of the Ethereum blockchain, creating Ethereum Classic (ETC) and the current Ethereum (ETH) chain.
+- [The DAO 攻击 - 2016](https://www.coindesk.com/learn/understanding-the-dao-attack)
+  以太坊历史上最重大的事件之一，其中 The DAO 智能合约 (smart contract) 中的一个漏洞被利用，导致损失了大约 360 万个 ETH。该事件最终导致以太坊区块链的硬分叉 (hard fork)，从而产生了以太坊经典 (Ethereum Classic, ETC) 和现在的以太坊 (Ethereum, ETH) 链。
 
-- [Shanghai DOS Attacks (2016)](https://ethos.dev/shanghai-attacks)
-  The network faced a series of DOS attacks during DevCon2 in Shanghai, where attackers exploited underpriced EVM opcodes (particularly EXTCODESIZE) to slow down block processing resulting in network congestion. This led to subsequent hard forks (Tangerine Whistle and Spurious Dragon) that adjusted gas costs for targeted opcodes to prevent similar attacks.
-
+- [上海拒绝服务 (DOS) 攻击 - 2016](https://ethos.dev/shanghai-attacks)
+  在上海举办的 DevCon2 期间，网络面临了一系列拒绝服务 (DOS) 攻击，攻击者利用价格过低的 EVM 操作码 (EVM opcodes)（特别是 EXTCODESIZE）来减慢区块处理速度，导致网络拥堵。这导致了随后的硬分叉 (hard forks)（Tangerine Whistle 和 Spurious Dragon），调整了针对性操作码的 Gas 成本，以防止类似攻击。

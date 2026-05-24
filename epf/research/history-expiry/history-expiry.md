@@ -1,22 +1,22 @@
-# History Expiry In Ethereum
+# 以太坊的历史数据过期 (History Expiry In Ethereum)
 
-> **Recommended pre-reading**
-> - [Ethereum Node Architecture](/wiki/EL/el-specs.md)
-> - [Execution Layer Specification](/wiki/EL/el-specs.md)
-> - [DevP2P protocol](/wiki/EL/devp2p.md)
-> - [Data structures and encoding](/wiki/EL/data-structures.md)
-> - [EIP-4444: Bound Historical Data in Execution Clients](https://eips.ethereum.org/EIPS/eip-4444)
-> - [EIP-7643: History Accumulator for Pre-PoS Data](https://eips.ethereum.org/EIPS/eip-7643)
+> **推荐预读 (Recommended pre-reading)**
+> - [以太坊节点架构 (Ethereum Node Architecture)](/wiki/EL/el-specs.md)
+> - [执行层规范 (Execution Layer Specification)](/wiki/EL/el-specs.md)
+> - [DevP2P 协议 (DevP2P protocol)](/wiki/EL/devp2p.md)
+> - [数据结构和编码 (Data structures and encoding)](/wiki/EL/data-structures.md)
+> - [EIP-4444: 执行客户端中的绑定历史数据 (EIP-4444: Bound Historical Data in Execution Clients)](https://eips.ethereum.org/EIPS/eip-4444)
+> - [EIP-7643: 前 PoS 数据的历史累加器 (EIP-7643: History Accumulator for Pre-PoS Data)](https://eips.ethereum.org/EIPS/eip-7643)
 
-History expiry is the idea that nodes should not be required to store historical data forever. Every Ethereum full node stores two categories of data. State is the current account, contract storage, and code. History is past block headers, bodies, and receipts.
+历史数据过期 (History expiry) 是指不应要求节点 (nodes) 永久存储历史数据 (historical data)。每个以太坊全节点 (full node) 都存储两类数据。状态 (State) 是当前的账户 (account)、合约存储 (contract storage) 和代码 (code)。历史数据 (History) 是过去的区块头 (block headers)、区块体 (bodies) 和收据 (receipts)。
 
-Up until recently, full nodes were expected to store and serve all historical data, over the peer-to-peer network, even if the data is not needed to validate a block. That data has grown with every block since genesis. Today, running a full node takes well over a terabyte of disk space, and both client load and sync times keep increasing even as the chain's capacity remains the same. Removing this data might sound risky, but Ethereum's default sync strategy already does not validate every block from genesis. [Snap sync](https://ethereum.org/en/developers/docs/nodes-and-clients/#snap-sync) starts from a recent state snapshot and [weak subjectivity checkpoints](https://epf.wiki/#/wiki/CL/syncing) anchor the chain to a trusted finalized point. Although historical validation is still possible, it is not compulsory.
+直到最近，全节点 (full nodes) 还被期望通过点对点网络提供并服务所有的历史数据，即使验证区块时并不需要这些数据。自创世 (genesis) 区块以来，这些数据随着每个区块的产生而增长。如今，运行一个全节点需要超过 1 TB 的磁盘空间，而且即使链的容量保持不变，客户端负载和同步时间也在不断增加。删除这些数据听起来可能有风险，但以太坊的默认同步策略本来就不去验证自创世以来的每一个区块。[快照同步 (Snap sync)](https://ethereum.org/en/developers/docs/nodes-and-clients/#snap-sync) 从最近的状态快照 (snapshot) 开始，而[弱主观性检查点 (weak subjectivity checkpoints)](https://epf.wiki/#/wiki/CL/syncing) 将链锚定在可信的已最终化点上。虽然历史验证 (historical validation) 仍然是可能的，但它不是强制性的。
 
-To solve this, [EIP-4444](https://eips.ethereum.org/EIPS/eip-4444) proposes that nodes may prune historical data and receipts older than a set threshold and stop serving them over the peer-to-peer network. Once a client has synced to the tip of the chain, historical data is only retrieved when requested explicitly over the JSON-RPC or when a peer attempts to sync. For this to work, the peer-to-peer protocol itself needed to change.
+为了解决这个问题，[EIP-4444](https://eips.ethereum.org/EIPS/eip-4444) 建议节点可以修剪 (prune) 早于设定阈值的历史数据 (historical data) 和收据 (receipts)，并停止在点对点网络上服务它们。一旦客户端同步到链的顶端，历史数据只有在通过 JSON-RPC 显式请求时，或者当同伴 (peer) 尝试同步时才会被检索。为了实现这一点，点对点协议本身需要进行更改。
 
-## DevP2P Changes
+## DevP2P 的改变 (DevP2P Changes)
 
-Under `eth/68` and older `eth` protocols, nodes assumed every peer stored the full chain from genesis. A node pruning old history while still advertising itself on `eth/68` would break that assumption and disrupt sync for peers requesting old blocks. [EIP-7642](https://eips.ethereum.org/EIPS/eip-7642) introduces `eth/69`, which removes this assumption. Prior to `eth/69`, when two nodes connect, they exchange a Status message containing the network ID, genesis hash, fork ID, and the hash of the node's latest block, but now the status handshake includes two new fields, `earliestBlock` and `latestBlock` that store the block range.
+在 `eth/68` 和更早的 `eth` 协议下，节点假设每个同伴 (peer) 都存储了自创世以来的完整链。一个修剪了旧历史但仍在 `eth/68` 上宣称自己的节点会破坏该假设，并扰乱请求旧区块的同伴的同步。[EIP-7642](https://eips.ethereum.org/EIPS/eip-7642) 引入了 `eth/69`，它移除了这一假设。在 `eth/69` 之前，当两个节点连接时，它们会交换一条状态消息 (Status message)，其中包含网络 ID、创世哈希、分叉 ID 和该节点最新区块的哈希。但现在的状态握手 (status handshake) 包含了两个新字段：`earliestBlock`（最早区块）和 `latestBlock`（最新区块），用来存储区块范围。
 
 ```python
     # Old eth/68 Status
@@ -32,26 +32,26 @@ Under `eth/68` and older `eth` protocols, nodes assumed every peer stored the fu
     # [earliestBlock, latestBlock, latestBlockHash]
 ```
 
-`eth/69` also adds a new message, BlockRangeUpdate. As a node prunes more data or downloads more history, it sends this message to its connected peers so they can update their view of what blocks that node can serve. This only needs to be sent once per epoch.
+`eth/69` 还添加了一条新消息：BlockRangeUpdate。当一个节点修剪 (prunes) 了更多数据或下载了更多历史时，它会向其连接的同伴发送此消息，以便同伴更新其对该节点可以服务的区块的视图。这每个纪元 (epoch) 只需要发送一次。
 
-`eth/69`'s linear range works for Phase 1 where nodes either hold pre-Merge (old PoW chain) data or they don't. For Phase 2, where nodes may hold non-contiguous slices of history, proposals like [EIP-7801](https://eips.ethereum.org/EIPS/eip-7801), introduce a `bitmask`-based subprotocol called `etha` that lets nodes advertise exactly which segments of the chain they store. While the eth protocol continues to handle live chain operations like block propagation, transaction gossip, and syncing to the tip, the `etha` subprotocol is dedicated entirely to serving historical data. This means historical block requests will no longer travel over the same channel as live chain, so a node that is looking for old blocks queries peers over etha, and nodes that do not support history sharding are never bothered with those requests again.
+`eth/69` 的线性范围适用于第一阶段 (Phase 1)，在该阶段节点要么持有 Merge（合并）前（旧 PoW 链）的数据，要么不持有。对于第二阶段 (Phase 2)，节点可能持有不连续的历史分片，类似于 [EIP-7801](https://eips.ethereum.org/EIPS/eip-7801) 的提案，它引入了一个基于位掩码 (bitmask) 的子协议 (subprotocol)，称为 `etha`，允许节点精确宣传它们存储了链的哪些片段。虽然 eth 协议继续处理实时链操作，如区块传播 (block propagation)、交易流言 (transaction gossip) 和同步到顶端，但 `etha` 子协议完全专用于服务历史数据 (historical data)。这意味着历史区块请求将不再与实时链使用相同的通道传输，因此寻找旧区块的节点会在 etha 上查询同伴，而不支持历史分片 (history sharding) 的节点将再也不会被这些请求打扰。
 
-The core idea of `etha` is that the chain history will be divided into repeating windows of 1,064,960 blocks. Each window is split into 10 equal spans of 106,496 blocks. Each bit in the `bitmask` represents one of those spans. If a node sets bit 3, that node is committing to hold every third span out of ten not just in the segment alone, but the entire chain from blocks 0 through 1,064,960, and from blocks 1,064,960 through 2,129,920, and so on all the way to the chain head. As new blocks are produced and new spans are created, the node must continue storing the spans that correspond to its committed bit.
+`etha` 的核心思想是将链历史划分为 1,064,960 个区块的重复窗口 (repeat windows)。每个窗口被分成 10 个等长的跨度 (spans)，每个跨度为 106,496 个区块。位掩码 (bitmask) 中的每一位代表其中一个跨度。如果一个节点设置了第 3 位，该节点就承诺持有每 10 个跨度中的第 3 个，不仅在单个片段中，而是整条链自区块 0 到 1,064,960，以及从区块 1,064,960 到 2,129,920，以此类推，一直延伸到链头。随着新区块的产出和新跨度的创建，该节点必须继续存储与其承诺位对应的跨度。
 
-**Window: Blocks 0 — 1,064,960**
+**窗口 (Window)：区块 0 — 1,064,960**
 
-|              | Span 0 | Span 1 | Span 2 | Span 3 | Span 4 | Span 5 | Span 6 | Span 7 | Span 8 | Span 9 |
+|              | 跨度 0 (Span 0) | 跨度 1 (Span 1) | 跨度 2 (Span 2) | 跨度 3 (Span 3) | 跨度 4 (Span 4) | 跨度 5 (Span 5) | 跨度 6 (Span 6) | 跨度 7 (Span 7) | 跨度 8 (Span 8) | 跨度 9 (Span 9) |
 |--------------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|
-| Node A       |   X    |        |        |        |        |        |        |        |        |        |
-| Node B       |        |        |        |   X    |        |        |        |        |        |        |
-| Node C       |        |        |        |        |        |        |        |   X    |        |        |
-| Node D       |        |   X    |        |        |        |        |        |        |        |        |
-| Node E       |        |        |        |        |        |   X    |        |        |        |        |
-| Node F       |        |        |        |        |        |        |        |        |        |   X    |
+| 节点 A (Node A) |   X    |        |        |        |        |        |        |        |        |        |
+| 节点 B (Node B) |        |        |        |   X    |        |        |        |        |        |        |
+| 节点 C (Node C) |        |        |        |        |        |        |        |   X    |        |        |
+| 节点 D (Node D) |        |   X    |        |        |        |        |        |        |        |        |
+| 节点 E (Node E) |        |        |        |        |        |   X    |        |        |        |        |
+| 节点 F (Node F) |        |        |        |        |        |        |        |        |        |   X    |
 
-The span sizes of 106,496 are not arbitrary. Each span is a multiple of 8,192 blocks, which is the maximum block range of an ERA1 file. This makes a node's storage and retrieval align directly with how data is packaged for distribution, and backfilling a shard straightforward. The minimum requirement is that each participating node retains at least one bit, which translates to roughly 10% of total chain history giving a 90% storage reduction compared to holding everything. A syncing node finding a particular shard depends on how many of its peers hold it. The probability that none of a node's peers hold a given shard is modeled as $(0.9)^n$, where $n$ is the number of connected peers. With 25 peers, there is roughly a 7% chance a shard is missing and with 32 peers that drops to about 3.4%.
+106,496 的跨度大小并非是随意的。每个跨度都是 8,192 个区块的倍数，这也是 ERA1 文件的最大区块范围。这使得节点的存储和检索与数据的打包分发直接对齐，并使回填分片 (shard) 变得简单。最低要求是每个参与节点至少保留一位，这相当于总链历史的约 10%，与持有全部历史相比减少了 90% 的存储空间。同步节点能否找到特定分片取决于其有多少个同伴持有该分片。没有任何同伴持有给定分片的概率模型为 $(0.9)^n$，其中 $n$ 是连接的同伴数量。在拥有 25 个同伴的情况下，分片缺失的概率约为 7%，而在拥有 32 个同伴时，这一概率降至约 3.4%。
 
-| Number of Connected Peers ($n$) | Probability No Peer Holds a Given Shard $P = (0.9)^n$ | Probability At Least One Peer Holds It $1 - (0.9)^n$ |
+| 连接同伴数量 (Number of Connected Peers, $n$) | 没有同伴持有给定分片的概率 (Probability No Peer Holds a Given Shard, $P = (0.9)^n$) | 至少有一个同伴持有它的概率 (Probability At Least One Peer Holds It, $1 - (0.9)^n$) |
 |---------------------------------|-------------------------------------------------------|-------------------------------------------------------|
 | 10                              | 34.9%                                                 | 65.1%                                                 |
 | 15                              | 20.6%                                                 | 79.4%                                                 |
@@ -60,7 +60,7 @@ The span sizes of 106,496 are not arbitrary. Each span is a multiple of 8,192 bl
 | 32                              | 3.4%                                                  | 96.6%                                                 |
 | 50                              | 0.5%                                                  | 99.5%                                                 |
 
-When two nodes connect over etha, they exchange a handshake containing the same fields as eth/69 plus the `blockBitmask`. From that point, the node can serve historical data using four messages reused directly from eth/69 with identical encoding such as `GetBlockBodies`, `BlockBodies`, `GetReceipts`, and `Receipts`. This makes the data retrieval process work the same way, and no new message types are needed.
+当两个节点通过 etha 连接时，它们会交换一个包含与 eth/69 相同字段以及 `blockBitmask` 的握手 (handshake)。从那时起，节点就可以使用直接复用自 eth/69 且具有相同编码的四条消息来服务历史数据，例如 `GetBlockBodies`、`BlockBodies`、`GetReceipts` 和 `Receipts`。这使得数据检索流程保持一致，且不需要新的消息类型。
 
 ```python
     # eth/69 Status Handshake
@@ -77,9 +77,9 @@ When two nodes connect over etha, they exchange a handshake containing the same 
     # Receipts        (0x10)
 ```
 
-## Deposit Log Dependency
+## 存款日志依赖 (Deposit Log Dependency)
 
-History expiry does not only affect the execution layer but it poses a direct problem for the consensus layer. Before the [Pectra hardfork](https://eips.ethereum.org/EIPS/eip-7600), when someone deposits 32 ETH to become a validator, that transaction goes to the deposit contract on the execution layer, and then emits a `DepositEvent` log that contains the validator's public key, withdrawal credentials, deposit amount, signature, and index. The consensus layer needs this information to onboard the validator.
+历史数据过期 (History expiry) 不仅影响执行层，还会对共识层 (consensus layer) 产生直接影响。在 [Pectra 硬分叉 (Pectra hardfork)](https://eips.ethereum.org/EIPS/eip-7600) 之前，当有人存入 32 ETH 成为验证者 (validator) 时，该交易会发送到执行层上的存款合约 (deposit contract)，然后触发 `DepositEvent` 日志，其中包含验证者的公钥 (public key)、取款凭证 (withdrawal credentials)、存款金额、签名 (signature) 和索引 (index)。共识层需要这些信息来让验证者入网。
 
 ```python
     # From github.com/ethereum/consensus-specs
@@ -92,7 +92,7 @@ History expiry does not only affect the execution layer but it poses a direct pr
     # )
 ```
 
-Consensus layer clients got this data through a mechanism called the Eth1Data poll. Every beacon block included an `eth1_data` field where the block proposer voted on a recent state of the deposit contract. To be able to vote, the consensus client of the proposer would query the execution client over JSON-RPC, asking it to read the deposit contract's logs from historical execution layer blocks. The execution client would scan back through old blocks to find the relevant deposit events, and that is exactly where history expiry breaks things.
+共识层客户端通过名为 Eth1Data 轮询的机制获取此数据。每个信标区块都包含一个 `eth1_data` 字段，区块提议者 (block proposer) 在其中对存款合约的最近状态进行投票。为了能够投票，提议者的共识客户端会通过 JSON-RPC 查询执行客户端，要求其读取历史执行层区块中的存款合约日志。执行客户端将向后扫描旧区块以找到相关的存款事件，而这正是历史数据过期打破常规的地方。
 
 ```mermaid
 graph TD
@@ -110,21 +110,21 @@ graph TD
     B --> A1
 ```
 
-These deposit logs live inside historical blocks, and if the execution client node has pruned its history, the consensus client can no longer read the deposit logs it depends on. The `Eth1Data` poll mechanism would fail because the data it polls no longer exists on the node.
+这些存款日志存在于历史区块中，如果执行客户端节点修剪了其历史数据，共识客户端将无法再读取它所依赖的存款日志。`Eth1Data` 轮询机制将会失败，因为其轮询的数据在节点上已不复存在。
 
-Aside from the history expiry issue, the `Eth1Data` poll flow was brittle. Consensus clients depended on JSON-RPC calls to execution clients, and inconsistencies between different execution client implementations caused failures. Block proposers needed to maintain and distribute deposit contract snapshots just to participate. The delay between a deposit transaction landing on the execution layer and the consensus layer processing it was roughly 12 hours. And the whole voting mechanism, where proposers vote on what they think the deposit contract state looks like, introduced attack surface that a direct reading would not have.
+除了历史数据过期问题外，`Eth1Data` 轮询流程也非常脆弱。共识客户端依赖于对执行客户端的 JSON-RPC 调用 (JSON-RPC calls)，而不同执行客户端实现之间的一致性差异会导致故障。区块提议者 (Block proposers) 需要维护和分发存款合约快照才能参与。从存款交易在执行层落地到共识层处理它之间存在大约 12 小时的延迟。而且，提议者就其认为的存款合约状态进行投票的整个机制，引入了直接读取所不会具有的攻击面。
 
-Now to solve all of the above issues, [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110) proposes including deposit processing as part of the execution payload sent on every block from the execution layer to the consensus layer. So when a deposit transaction is included in a block, the execution client parses the `DepositEvent` logs from that block's receipts right then, packages them into a `deposit_requests` list, and includes them in the execution payload. This kills the `Eth1Data` voting mechanism, and removes the consensus layer's dependency on historical execution layer data entirely. EIP-6110 shipped as part of the [Pectra upgrade](https://eips.ethereum.org/EIPS/eip-7600), clearing this dependency.
+现在，为了解决上述所有问题，[EIP-6110](https://eips.ethereum.org/EIPS/eip-6110) 建议将存款处理作为每个区块中从执行层发送到共识层的执行有效载荷 (execution payload) 的一部分。因此，当区块中包含存款交易时，执行客户端会立即从该区块的收据中解析 `DepositEvent` 日志，将它们打包到 `deposit_requests` 列表中，并将其包含在执行有效载荷中。这彻底消除了 `Eth1Data` 投票机制，并完全移除了共识层对历史执行层数据的依赖。EIP-6110 作为 [Pectra 升级 (Pectra upgrade)](https://eips.ethereum.org/EIPS/eip-7600) 的一部分发布，清除了这一依赖。
 
-## ERA Files
+## ERA 文件 (ERA Files)
 
-Once nodes stop serving old history, that data still needs to be retrievable somewhere. ERA files are flat-file archives containing finalized historical blocks. They are built on top of [e2store](https://github.com/status-im/nimbus-eth2/blob/stable/docs/e2store.md), a Type-Length-Value file format designed for long-term cold storage of Ethereum data. Each entry in an e2store file has an 8-byte header, followed by the data itself. The header is broken into
+一旦节点停止服务旧历史，该数据仍然需要能够在某个地方被检索到。ERA 文件 (ERA files) 是包含已最终化历史区块的扁平文件存档 (flat-file archives)。它们构建在 [e2store](https://github.com/status-im/nimbus-eth2/blob/stable/docs/e2store.md) 之上，e2store 是一种专为以太坊数据的长期冷存储而设计的类型-长度-值 (Type-Length-Value) 文件格式。e2store 文件中的每个条目都有一个 8 字节的头部，后面跟着数据本身。头部被划分为：
 
-- 2 bytes for the type
-- 4 bytes for the length
-- 2 bytes reserved
+- 2 字节用于类型 (type)
+- 4 字节用于长度 (length)
+- 2 字节保留 (reserved)
 
-There are several [e2store formats](https://github.com/eth-clients/e2store-format-specs), and each covers its own slice of the data. ERA1 files store pre-merge execution layer history. Each ERA1 file packages 8,192 blocks worth of headers, bodies, receipts, and total difficulty values, all snappy-compressed. ERA files store post-merge beacon chain history, including beacon blocks and states, also in batches of 8,192 slots (~27 hours of chain time). E2HS files cover full execution layer history from genesis to latest, with headers accompanied by proofs of canonicalness. Erb files, still under development, are the equivalent for blob sidecars. E2SS files store execution state snapshots.
+存在几种 [e2store 格式 (e2store formats)](https://github.com/eth-clients/e2store-format-specs)，每种都涵盖了其自身的数据分片。ERA1 文件存储了合并前的执行层历史。每个 ERA1 文件都打包了 8,192 个区块的头部 (headers)、区块体 (bodies)、收据 (receipts) 和总难度 (total difficulty) 值，全部经过 Snappy 压缩 (Snappy-compressed)。ERA 文件存储了合并后的信标链历史 (beacon chain history)，包括信标区块和状态，同样以 8,192 个时隙 (slots) 为一批（~27 小时的链上时间）。E2HS 文件覆盖了自创世到最新完整的执行层历史，其头部附带有规范性证明。仍在开发中的 Erb 文件是 Blob 旁支 (blob sidecars) 的等价物。E2SS 文件存储了执行状态 (state) 快照。
 
 ```python
     # e2store entry layout
@@ -135,7 +135,7 @@ There are several [e2store formats](https://github.com/eth-clients/e2store-forma
     # block-tuple := CompressedHeader | CompressedBody | CompressedReceipts | TotalDifficulty
 ```
 
-The 8,192-block batch size comes from the accumulator size limit defined in [EIP-7643](https://eips.ethereum.org/EIPS/eip-7643). Each ERA1 file includes an accumulator, which is the SSZ hash tree root of up to 8,192 header records. A header record is a pair of block hash and total difficulty. The accumulator serves as a cryptographic commitment to the contents of the file.
+8,192 区块的批次大小来自于 [EIP-7643](https://eips.ethereum.org/EIPS/eip-7643) 中定义的累加器 (accumulator) 大小限制。每个 ERA1 文件都包含一个累加器，它是多达 8,192 个头部记录 (header records) 的 SSZ 哈希树根 (SSZ hash tree root)。头部记录是一对区块哈希 (block hash) 和总难度 (total difficulty)。累加器作为对文件内容的密码学承诺。
 
 ```python
     # Header record used in the accumulator
@@ -145,11 +145,11 @@ The 8,192-block batch size comes from the accumulator size limit defined in [EIP
     # accumulator = hash_tree_root(List[header_record], max_length=8192)
 ```
 
-Anyone downloading an ERA1 file can reconstruct the epoch accumulator from the block headers inside it and compare the result against the known accumulator root. The full set of pre-merge accumulator roots is defined in EIP-7643, and the hash tree root of the entire `HistoricalHashesAccumulator` for all data before block 15,537,394 (the merge block) is a single fixed value, making it trustless.
+任何下载 ERA1 文件的人都可以从其中的区块头重建纪元累加器，并将结果与已知的累加器根进行对比。EIP-7643 中定义了全套的合并前累加器根，并且区块 15,537,394（合并区块）之前所有数据的整个 `HistoricalHashesAccumulator` 的哈希树根是一个单一的固定值，这使其具有无信任性。
 
-### Accumulator Verification
+### 累加器验证 (Accumulator Verification)
 
-The accumulator works with three data structures.
+累加器与三种数据结构配合使用。
 
 ```python
     EPOCH_SIZE = 8192  # blocks per ERA1 file
@@ -171,9 +171,9 @@ The accumulator works with three data structures.
     # ]
 ```
 
-A `HeaderRecord` pairs a block's hash with its total difficulty at that height. An `EpochRecord` collects up to 8,192 of these records. The `HistoricalHashesAccumulator` stores the Merkle roots of all completed epochs in `historical_epochs`, plus whatever partial epoch remains in `current_epoch`.
+`HeaderRecord` 将区块哈希与其在该高度的总难度配对。`EpochRecord` 收集了多达 8,192 个此类记录。`HistoricalHashesAccumulator` 存储了 `historical_epochs` 中所有已完成纪元的默克尔根，以及 `current_epoch` 中留存的任何部分纪元。
 
-For example, if you take the first three blocks on mainnet, each block produces a `HeaderRecord`.
+例如，如果您以主网上的前三个区块为例，每个区块都会生成一个 `HeaderRecord`。
 
 ```python
     # Block 0 (genesis)
@@ -188,14 +188,14 @@ For example, if you take the first three blocks on mainnet, each block produces 
     # ... continue for all 8192 blocks in epoch 0
 ```
 
-Once all header records for epoch 0 are collected, the epoch root is computed through SSZ Merkle tree hashing. It takes the list of 8,192 `HeaderRecords`, serializes each one as SSZ (block_hash as bytes32 + total_difficulty as uint256, giving 64 bytes per record), then builds a binary Merkle tree over the leaves. Each pair of leaves is hashed together with SHA256, then each pair of intermediate nodes is hashed again, up to the root. Since the list has a max length of 8,192, the tree is always padded to 8,192 leaves ($\log_2(8192) = 13$ levels deep). A final "mix in length" step hashes the tree root with the actual list length to produce the epoch root.
+一旦收集了纪元 0 的所有头部记录，就会通过 SSZ 默克尔树哈希来计算纪元根。它提取 8,192 个 `HeaderRecords` 列表，将每个记录序列化为 SSZ（作为 bytes32 的 block_hash + 作为 uint256 的 total_difficulty，使得每个记录为 64 字节），然后在叶节点上构建二叉默克尔树。每对叶节点都使用 SHA256 哈希到一起，然后每对中间节点再次进行哈希，直到根节点。由于列表的最大长度为 8,192，因此该树始终填充为 8,192 个叶节点（$\log_2(8192) = 13$ 层深）。最后的“混合长度”步骤将树根与实际列表长度进行哈希，以产生纪元根。
 
 ```python
     # epoch_root_0 = hash_tree_root([header_record_0, header_record_1, ..., header_record_8191])
     # epoch_root_0 = 0x5ec1ffb8c3b146f42606c74ced973dc16ec5a107c0345858c343fc94780b4218
 ```
 
-The root just computed is the first entry in the `historical_epochs` list. The same process repeats for every block batch across the entire pre-merge chain.
+刚刚计算出的根是 `historical_epochs` 列表中的第一个条目。对于整个合并前链上的每个区块批次，该过程都会重复。
 
 ```mermaid
 graph TB
@@ -226,68 +226,62 @@ graph TB
     ACC ------>|hash_tree_root| ROOT["0xec8e040f...085e701"]
 ```
 
-The merge happened at block 15,537,394. That means there are 1,896 complete epochs (1,896 × 8,192 = 15,531,008 blocks) plus a final partial epoch of 6,386 blocks (15,537,394 − 15,531,008). The complete epochs go into `historical_epochs` as a list of 1,896 roots. The final 6,386 header records go into `current_epoch`. The `hash_tree_root` of the entire `HistoricalHashesAccumulator` produces a single fixed value that is hardcoded into clients. It never changes because the pre-merge chain is frozen.
+合并发生在区块 15,537,394。这意味着有 1,896 个完整纪元 (epochs)（$1,896 \times 8,192 = 15,531,008$ 区块），加上最后的 6,386 个区块的部分纪元 ($15,537,394 - 15,531,008$)。完成的纪元以 1,896 个根的列表形式存入 `historical_epochs`。最后的 6,386 个头部记录存入 `current_epoch`。整个 `HistoricalHashesAccumulator` 的 `hash_tree_root` 生成一个硬编码到客户端中的单一固定值。它永远不会改变，因为合并前链是冻结的。
 
 ```python
     # Final pre-merge accumulator root (from EIP-7643)
     # 0xec8e040fd6c557b41ca8ddd38f7e9d58a9281918dc92bdb72342a38fb085e701
 ```
 
-When a node downloads an ERA1 file, verification works in four steps. Extract all block headers from the file. Build a `HeaderRecord` for each block. Compute `hash_tree_root` over the records. Compare the result against the known epoch root from EIP-7643's published table. If the roots match, the file is canonical. If they don't, the file is corrupted or tampered with and should be rejected.
+当节点下载 ERA1 文件时，验证分为四个步骤：从文件中提取所有的区块头；为每个区块构建一个 `HeaderRecord`；在记录上计算 `hash_tree_root`；将结果与 EIP-7643 发布表中的已知纪元根进行对比。如果根匹配，则该文件是规范的。如果它们不匹配，则说明文件已损坏或被篡改，应予以拒绝。
 
-### Proof of Inclusion
+### 纳入证明 (Proof of Inclusion)
 
-The accumulator also enables compact Merkle proofs for individual blocks. Before EIP-7643, proving that a specific block was canonical required walking backwards through the entire parent hash chain, which is $O(n)$. With the accumulator, a Merkle proof from the leaf (the specific `HeaderRecord`) to the epoch root is $O(\log n)$, specifically $O(\log_2 8192) = 13$ hashes for any block within an epoch. To prove against the full accumulator root, you add one more proof step from the epoch root to the `HistoricalHashesAccumulator` root.
+累加器还为单个区块启用了紧凑的默克尔证明 (Merkle proofs)。在 EIP-7643 之前，证明特定区块是规范的证明需要沿着整个父哈希链向后遍历，这需要 $O(n)$ 的时间复杂度。有了累加器，从叶节点（特定的 `HeaderRecord`）到纪元根的默克尔证明仅需 $O(\log n)$ 的时间，特别是对于纪元内的任何区块，只需要 $O(\log_2 8192) = 13$ 次哈希。为了针对完整的累加器根进行证明，您只需添加从纪元根到 `HistoricalHashesAccumulator` 根的另外一个证明步骤。
 
-Taking block 500,000 as an example
+以区块 500,000 为例：
 
 $$\text{epoch} = \left\lfloor \frac{500{,}000}{8{,}192} \right\rfloor = 61$$
 
 $$\text{position within epoch} = 500{,}000 \mod 8{,}192 = 888$$
 
-The Merkle proof from `HeaderRecord` at index 888 to `epoch_root_61` requires
+从索引 888 处的 `HeaderRecord` 到 `epoch_root_61` 的默克尔证明需要：
 
-$$\log_2(8192) = 13 \text{ sibling hashes}$$
+$$\log_2(8192) = 13 \text{ 兄弟节点哈希 (sibling hashes)}$$
 
-The Merkle proof from `epoch_root_61` to the full accumulator root requires
+从 `epoch_root_61` 到完整累加器根的默克尔证明需要：
 
-$$\log_2(2048) = 11 \text{ sibling hashes}$$
+$$\log_2(2048) = 11 \text{ 兄弟节点哈希 (sibling hashes)}$$
 
-The total proof size is
+总证明大小为：
 
-$$13 + 11 = 24 \text{ hashes} \times 32 \text{ bytes} = 768 \text{ bytes}$$
+$$13 + 11 = 24 \text{ 次哈希 (hashes)} \times 32 \text{ 字节 (bytes)} = 768 \text{ 字节 (bytes)}$$
 
-to prove any pre-merge block is canonical.
+用以证明任何合并前区块是规范的。
 
-This is the verification mechanism the [Portal Network](https://www.ethportal.net/) was designed to use. When a node requests a historical block from the network, the response includes the block data plus a Merkle proof against the accumulator.
+这正是[门户网络 (Portal Network)](https://www.ethportal.net/) 所设计使用的验证机制。当节点从网络中请求历史区块时，响应将包括区块数据，外加针对累加器的默克尔证明 (Merkle proof)。
 
-### Distribution
+### 分发 (Distribution)
 
-ERA1 files follow the naming convention `<network>-<epoch>-<hexroot>.era1`, for example `mainnet-00000-5ec1ffb8.era1` for the first 8,192 blocks on mainnet. The hex portion is a truncated accumulator root, so the filename itself is a quick integrity check. The BlockIndex at the end of the file stores relative offsets to each block tuple, making random access by block number possible without scanning the entire file.
+ERA1 文件遵循 `<network>-<epoch>-<hexroot>.era1` 的命名约定，例如主网前 8,192 个区块的文件名为 `mainnet-00000-5ec1ffb8.era1`。16 进制部分是截断的累加器根，因此文件名本身就是快速完整性检查。文件末尾的 BlockIndex 存储了每个区块元组的相对偏移量，从而使得无需扫描整个文件就可以通过区块号进行随机访问。
 
-The [eth-clients/history-endpoints](https://github.com/eth-clients/history-endpoints) registry maintains a community list of providers serving ERA1 and ERA files over HTTP and torrents. Providers like [ethPandaOps](https://ethpandaops.io/data/history/) host the full set of mainnet ERA1 files with SHA256 checksums for verification. Files can also be shared over [BitTorrent](magnet:?xt=urn:btih:edcc7c112bae520e3226065a61817d3575904e0d&dn=EthereumMainnetPreMergeEraFiles&xl=458498121702&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.tracker.cl%3A1337%2Fannounce&tr=udp%3A%2F%2Fbt1.archive.org%3A6969%2Fannounce). The goal is that no single provider is required and the data remains available through multiple independent channels.
+[eth-clients/history-endpoints](https://github.com/eth-clients/history-endpoints) 注册表维护了一个通过 HTTP 和种子服务提供 ERA1 和 ERA 文件的社区提供商列表。像 [ethPandaOps](https://ethpandaops.io/data/history/) 这样的提供商托管了完整的主网 ERA1 文件集，并带有用于验证的 SHA256 校验和。文件也可以通过 [BitTorrent 种子](magnet:?xt=urn:btih:edcc7c112bae520e3226065a61817d3575904e0d&dn=EthereumMainnetPreMergeEraFiles&xl=458498121702&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.tracker.cl%3A1337%2Fannounce&tr=udp%3A%2F%2Fbt1.archive.org%3A6969%2Fannounce)进行共享。我们的目标是不需要依赖单一的提供商，并且可以通过多个独立的渠道来获取数据。
 
-Client support is already in place. [Geth](https://geth.ethereum.org/docs/fundamentals/downloadera), [Nimbus](https://nimbus.guide/era-store.html), [Besu](https://besu.hyperledger.org/public-networks/how-to/era1-file-full-sync), and [Reth](https://reth.rs/docs/reth_era/index.html) all support ERA1 imports. Each etha span of 106,496 blocks is exactly 13 ERA1 files (13 × 8,192 = 106,496), so a node's storage boundaries under etha map directly to whole ERA1 files.
+客户端支持已经到位。[Geth](https://geth.ethereum.org/docs/fundamentals/downloadera)、[Nimbus](https://nimbus.guide/era-store.html)、[Besu](https://besu.hyperledger.org/public-networks/how-to/era1-file-full-sync) 和 [Reth](https://reth.rs/docs/reth_era/index.html) 都支持 ERA1 导入。每个 106,496 区块的 etha 跨度恰好是 13 个 ERA1 文件 ($13 \times 8,192 = 106,496$)，因此 etha 下节点的存储边界直接映射到完整的 ERA1 文件。
 
-## Portal Network
+## 门户网络 (Portal Network)
 
-ERA files solve the archival problem but they are static. A node that needs a single old block should not have to download an entire 8,192-block file to get it. The [Portal Network](https://www.ethportal.net/) provides the on-demand retrieval layer. It is a lightweight peer-to-peer network where each participating node stores a small slice of Ethereum's data and serves it when requested. Unlike the existing DevP2P network where every full node is expected to hold everything, Portal is designed so that every node that joins adds capacity rather than consuming it.
+ERA 文件解决了存档问题，但它们是静态的。一个需要单个旧区块的节点不应该为了获得它而必须下载整个 8,192 区块的文件。[门户网络 (Portal Network)](https://www.ethportal.net/) 提供了按需检索层。它是一个轻量级的点对点网络，其中每个参与节点存储以太坊数据的一小片并在被请求时提供它。与现有的每个全节点都需要持有所有内容的 DevP2P 网络不同，门户网络旨在让每个加入的节点都增加容量，而不是消耗容量。
 
-Portal runs on top of [Discovery v5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md) over UDP and is split into independent sub-networks for history, beacon chain data, and state. Each sub-network forms its own overlay DHT. Data enters through bridge nodes that pull from full nodes over JSON-RPC and push into the appropriate sub-network. Every piece of data is identified by a content key and each node stores content based on its XOR distance to that key, controlled by a self-declared radius. Retrieval is verified using accumulator proofs for pre-merge data and beacon chain `historical_summaries` for post-merge data.
+门户网络运行在 UDP 上的 [Discovery v5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md) 之上，并被划分为用于历史、信标链数据和状态的独立子网络。每个子网络形成其自身的覆盖式 DHT (overlay DHT)。数据通过从全节点拉取 JSON-RPC 并推送到相应子网络的桥接节点 (bridge nodes) 进入。每条数据都由一个内容键 (content key) 标识，每个节点根据其到该键的 XOR 距离 (XOR distance) 来存储内容，这受控于自我声明半径 (self-declared radius)。检索使用针对合并前数据的累加器证明和针对合并后数据的信标链 `historical_summaries` 进行验证。
 
-However, Portal Network development has largely stalled and it is not currently an active part of
-the history expiry roadmap. Four client implementations exist ([Trin](https://github.com/ethereum/trin),
-[Fluffy](https://github.com/status-im/nimbus-eth1/tree/master/fluffy),
-[Ultralight](https://github.com/ethereumjs/ultralight),
-[Shisui](https://github.com/optimism-java/shisui)) although active work has slowed down significantly.
+然而，门户网络的开发在很大程度上已经停滞，它目前并不是历史数据过期路线图中的活跃部分。虽然存在四种客户端实现（[Trin](https://github.com/ethereum/trin)、[Fluffy](https://github.com/status-im/nimbus-eth1/tree/master/fluffy)、[Ultralight](https://github.com/ethereumjs/ultralight)、[Shisui](https://github.com/optimism-java/shisui)），但目前的主动开发工作已显著放缓。
 
+## 当前状态 (Current Status)
 
-## Current Status
+随着 EIP-6110 作为 Pectra 升级的一部分发布，历史数据过期的第一阶段 (Phase 1) 已经在进行中。第一阶段针对的是合并前 (PoW) 历史，这占了大多数节点存储数据的大部分。第二阶段涵盖了通过 etha (EIP-7801) 进行非连续分片的合并后历史，目前仍在活跃开发中。
 
-Phase 1 of history expiry is already underway with EIP-6110 shipped as part of the Pectra upgrade. Phase 1 targets pre-Merge (PoW) history, which accounts for the bulk of stored data on most nodes. Phase 2 covers post-Merge history with non-contiguous sharding through etha (EIP-7801) and is still in active development.
-
-
-## Resources
+## 资源 (Resources)
 
 - [EIP-4444: Bound Historical Data in Execution Clients](https://eips.ethereum.org/EIPS/eip-4444), [archived](https://web.archive.org/web/20240601000000*/https://eips.ethereum.org/EIPS/eip-4444)
 - [EIP-6110: Supply validator deposits on chain](https://eips.ethereum.org/EIPS/eip-6110), [archived](https://web.archive.org/web/20240601000000*/https://eips.ethereum.org/EIPS/eip-6110)
@@ -296,7 +290,7 @@ Phase 1 of history expiry is already underway with EIP-6110 shipped as part of t
 - [EIP-7801: etha - Sharded Blocks Subprotocol](https://eips.ethereum.org/EIPS/eip-7801), [archived](https://web.archive.org/web/20240601000000*/https://eips.ethereum.org/EIPS/eip-7801)
 - [e2store format specifications](https://github.com/eth-clients/e2store-format-specs)
 - [ERA1 format specification](https://github.com/eth-clients/e2store-format-specs/blob/main/formats/era1.md)
-- [Ethereum historical data endpoints](https://eth-clients.github.io/history-endpoints/)
+- [Ethereum historical data endpoints](https://github.com/eth-clients/history-endpoints)
 - [Portal Network specifications](https://github.com/ethereum/portal-network-specs)
 - [Portal Network design requirements](https://blog.ethportal.net/posts/design-requirements-for-portal-network)
 - [Portal Network FAQ](https://notes.ethereum.org/@Kolby-ML/HJ-9D5aYp)

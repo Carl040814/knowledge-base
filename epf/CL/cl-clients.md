@@ -1,117 +1,110 @@
-# Consensus Client
+# 共识客户端 (Consensus Client)
 
-> **Consensus clients**, formerly known as *eth2 clients*, run Ethereum's proof-of-stake consensus algorithm allowing the network to reach agreement about the head of the Beacon Chain. Consensus clients do not participate in validating/broadcasting transactions or executing state transitions: that is done by execution clients. Consensus clients do not attest to, or propose new blocks: that is done by the validator client which is an optional add-on to the consensus client.
+> **共识客户端 (Consensus Client)**，以前称为 *eth2 客户端*，运行以太坊的权益证明共识算法，使网络能够就信标链 (Beacon Chain) 的头部达成一致。共识客户端不参与验证/广播交易或执行状态转换：这些由执行客户端 (execution client) 完成。共识客户端不对新区块进行证明或提议：这些由验证者客户端 (validator client) 完成，它是共识客户端的一个可选附加组件。
 
-## Overview Table
+## 概览表
 
-These clients are developed in different programming languages, provide have unique features and offer different performance profiles. All clients support Ethereum mainnet out of the box along with active testnets. Variety of implementations allows the network to benefit from client diversity. If you are choosing a client to use, current client diversity should be one of the main factors.
+这些客户端使用不同的编程语言开发，提供独特的功能和不同的性能表现。所有客户端都开箱即用地支持以太坊主网 (Mainnet) 以及活跃的测试网。多样化的实现使网络能够受益于客户端多样性 (client diversity)。如果你正在选择要使用的客户端，当前的客户端多样性应该是主要考虑因素之一。
 
-| Client                                                                  | Language   | Developer           | Status      |
-| ----------------------------------------------------------------------- | ---------- | ------------------- | ----------- |
-| [Lighthouse](https://github.com/sigp/lighthouse)                        | Rust       | Sigma Prime         | Production  |
-| [Lodestar](https://github.com/ChainSafe/lodestar)                       | TypeScript | ChainSafe           | Production  |
-| [Nimbus](https://github.com/status-im/nimbus-eth2)                      | Nim        | Status              | Production  |
-| [Prysm](https://github.com/prysmaticlabs/prysm)                         | Go         | Prysmatic Labs      | Production  |
-| [Teku](https://github.com/ConsenSys/teku)                               | Java       | ConsenSys           | Production  |
-| [Grandine](https://github.com/grandinetech/grandine)                    | Rust       | Grandine Developers | Production  |
-| [Caplin](https://github.com/ledgerwatch/erigon)                         | Go         | Erigon              | Development |
-| [LambdaClass](https://github.com/lambdaclass/lambda_ethereum_consensus) | Elixir     | LambdaClass         | Development |
+| 客户端                                                                    | 语言         | 开发者                | 状态       |
+| ----------------------------------------------------------------------- | ---------- | ------------------- | ---------- |
+| [Lighthouse](https://github.com/sigp/lighthouse)                        | Rust       | Sigma Prime         | 生产环境   |
+| [Lodestar](https://github.com/ChainSafe/lodestar)                       | TypeScript | ChainSafe           | 生产环境   |
+| [Nimbus](https://github.com/status-im/nimbus-eth2)                      | Nim        | Status              | 生产环境   |
+| [Prysm](https://github.com/prysmaticlabs/prysm)                         | Go         | Prysmatic Labs      | 生产环境   |
+| [Teku](https://github.com/ConsenSys/teku)                               | Java       | ConsenSys           | 生产环境   |
+| [Grandine](https://github.com/grandinetech/grandine)                    | Rust       | Grandine Developers | 生产环境   |
+| [Caplin](https://github.com/ledgerwatch/erigon)                         | Go         | Erigon              | 开发中     |
+| [LambdaClass](https://github.com/lambdaclass/lambda_ethereum_consensus) | Elixir     | LambdaClass         | 开发中     |
 
 
-## Distribution
+## 分布
 
-The overwhelming majority of node operators are currently using either Prysm or Lighthouse as a Consensus Client.
-In the interest of supporting the health of the Beacon Chain (formerly ETH2), it is recommended to use different clients.
-[Why?](https://clientdiversity.org/#why)
+目前绝大多数节点运营商使用 Prysm 或 Lighthouse 作为共识客户端。为了支持信标链（前身为 ETH2）的健康，建议使用不同的客户端。[为什么？](https://clientdiversity.org/#why)
 
 
 ### Lighthouse
-Lighthouse, written in Rust by Sigma Prime, emphasizes security and performance. It's widely adopted but caution is advised as a supermajority could potentially lead to chain splits.
-Lighthouse is licensed under Apache 2.0 and known for its robustness in production environments. 
+Lighthouse 由 Sigma Prime 用 Rust 编写，强调安全性和性能。它被广泛采用，但需要注意：如果形成超级多数 (supermajority) 可能导致链分裂。Lighthouse 以 Apache 2.0 许可发布，以在生产环境中的健壮性著称。
 
-Lighthouse provides binaries for every platform including ARM and allows cross compilation. There are portable versions which are compromising compiler performance options for a better platform compatibility. Released binaries are signed by gpg key `15E66D941F697E28F49381F426416DC3F30674B0` from security@sigmaprime.io.
+Lighthouse 为包括 ARM 在内的所有平台提供二进制文件，并允许交叉编译。有便携版本，通过牺牲编译器性能选项换取更好的平台兼容性。发布的二进制文件由 gpg 密钥 `15E66D941F697E28F49381F426416DC3F30674B0` (security@sigmaprime.io) 签名。
 
-Noteworthy Features:
-- [Cross compilation](https://lighthouse-book.sigmaprime.io/installation_cross_compiling.html)
-- [Slashing Protection](https://lighthouse-book.sigmaprime.io/validator_slashing_protection.html)
-- [Doppelganger Protection](https://lighthouse-book.sigmaprime.io/validator_doppelganger.html)
-- [Running a Slasher](https://lighthouse-book.sigmaprime.io/advanced_slasher.html)
-- [Block Proposer-only](https://lighthouse-book.sigmaprime.io/advanced_proposer_only.html)
-- [Prometheus and Grafana](https://lighthouse-book.sigmaprime.io/api_metrics.html)
+值得注意的功能：
+- [交叉编译](https://lighthouse-book.sigmaprime.io/installation_cross_compiling.html)
+- [罚没保护 (Slashing Protection)](https://lighthouse-book.sigmaprime.io/validator_slashing_protection.html)
+- [分身保护 (Doppelganger Protection)](https://lighthouse-book.sigmaprime.io/validator_doppelganger.html)
+- [运行 Slasher](https://lighthouse-book.sigmaprime.io/advanced_slasher.html)
+- [仅区块提议者模式](https://lighthouse-book.sigmaprime.io/advanced_proposer_only.html)
+- [Prometheus 和 Grafana](https://lighthouse-book.sigmaprime.io/api_metrics.html)
 
 
 
 ### Lodestar
-Lodestar is a TypeScript-based Ethereum consensus client by ChainSafe, tailored for rapid prototyping and browser compatibility.
-It supports beacon node and validator client functionalities, offering essential libraries like BLS and SSZ for Ethereum protocol development.
-Lodestar is double-licensed under the Apache License 2.0 and the GNU Lesser General Public License (LGPL), allowing users to choose between a permissive and a copyleft licensing model.
+Lodestar 是 ChainSafe 开发的基于 TypeScript 的以太坊共识客户端，专为快速原型设计和浏览器兼容性而定制。它支持信标节点和验证者客户端功能，提供 BLS 和 SSZ 等用于以太坊协议开发的基本库。Lodestar 在 Apache License 2.0 和 GNU Lesser General Public License (LGPL) 下双许可，允许用户在宽松许可和著佐权 (copyleft) 许可模式之间选择。
 
-Noteworthy Features:
-- [Validator Client](https://chainsafe.github.io/lodestar/run/validator-management/vc-configuration)
-- [MEV and Builder Integration](https://chainsafe.github.io/lodestar/run/beacon-management/mev-and-builder-integration)
-- [Light Client](https://chainsafe.github.io/lodestar/libraries/lightclient-prover/lightclient)
-- [Prover](https://chainsafe.github.io/lodestar/libraries/lightclient-prover/prover)
-- [Prometheus and Grafana](https://chainsafe.github.io/lodestar/run/logging-and-metrics/prometheus-grafana)
-- [Remote Monitoring](https://chainsafe.github.io/lodestar/run/logging-and-metrics/client-monitoring)
+值得注意的功能：
+- [验证者客户端](https://chainsafe.github.io/lodestar/run/validator-management/vc-configuration)
+- [MEV 和 Builder 集成](https://chainsafe.github.io/lodestar/run/beacon-management/mev-and-builder-integration)
+- [轻客户端 (Light Client)](https://chainsafe.github.io/lodestar/libraries/lightclient-prover/lightclient)
+- [证明器 (Prover)](https://chainsafe.github.io/lodestar/libraries/lightclient-prover/prover)
+- [Prometheus 和 Grafana](https://chainsafe.github.io/lodestar/run/logging-and-metrics/prometheus-grafana)
+- [远程监控](https://chainsafe.github.io/lodestar/run/logging-and-metrics/client-monitoring)
 
 ### Prysm
-Prysmatic Labs' Prysm client, written in Go, focuses on usability and reliability. It includes a full beacon node implementation and validator client, leveraging gRPC for interprocess communication, BoltDB for storage, and libp2p for networking. Prysm is designed for secure participation in Ethereum's proof-of-stake consensus.
+Prysmatic Labs 的 Prysm 客户端用 Go 编写，专注于可用性和可靠性。它包括完整的信标节点实现和验证者客户端，利用 gRPC 进行进程间通信，BoltDB 用于存储，libp2p 用于网络。Prysm 旨在安全地参与以太坊的权益证明共识。
 
-Noteworthy Features:
-- [Validator Client](https://docs.prylabs.network/docs/wallet/nondeterministic)
-- [Configuring MEV Builder](https://docs.prylabs.network/docs/advanced/builder)
-- [Running a Slasher](https://docs.prylabs.network/docs/prysm-usage/slasher)
-- [Prometheus and Grafana](https://docs.prylabs.network/docs/prysm-usage/monitoring/grafana-dashboard)
-- [Detailed Best Security Practices](https://docs.prylabs.network/docs/security-best-practices)
+值得注意的功能：
+- [验证者客户端](https://docs.prylabs.network/docs/wallet/nondeterministic)
+- [配置 MEV Builder](https://docs.prylabs.network/docs/advanced/builder)
+- [运行 Slasher](https://docs.prylabs.network/docs/prysm-usage/slasher)
+- [Prometheus 和 Grafana](https://docs.prylabs.network/docs/prysm-usage/monitoring/grafana-dashboard)
+- [详细的最佳安全实践](https://docs.prylabs.network/docs/security-best-practices)
 
 ### Nimbus
-Nimbus, developed in Nim by Status, is optimized for resource efficiency. It supports lightweight devices like smartphones and Raspberry Pi's, conserving resources for other tasks when run on powerful servers. Nimbus features integrated validator client support, remote signing, performance analysis tools, and robust validator monitoring capabilities.
+Nimbus 由 Status 用 Nim 开发，针对资源效率进行了优化。它支持轻量级设备，如智能手机和 Raspberry Pi，在强大的服务器上运行时为其他任务节省资源。Nimbus 具有集成的验证者客户端支持、远程签名、性能分析工具和强大的验证者监控能力。
 
-Noteworthy Features:
-- [Run an Execution Client](https://nimbus.guide/eth1.html)
-- [Validator Client](https://nimbus.guide/validator-client.html)
-- [MEV and Builder Integration](https://nimbus.guide/external-block-builder.html)
-- [Prometheus and Grafana](https://nimbus.guide/metrics-pretty-pictures.html)
+值得注意的功能：
+- [运行执行客户端](https://nimbus.guide/eth1.html)
+- [验证者客户端](https://nimbus.guide/validator-client.html)
+- [MEV 和 Builder 集成](https://nimbus.guide/external-block-builder.html)
+- [Prometheus 和 Grafana](https://nimbus.guide/metrics-pretty-pictures.html)
 
 ### Teku
-ConsenSys' Teku is a Java-based Ethereum consensus client offering comprehensive enterprise-grade features. It includes a full beacon node implementation, validator client, REST APIs for node management, Prometheus metrics for monitoring, and external key management for validator signing keys. Teku is suited for enterprise-level Ethereum deployments requiring scalability and operational control.
+ConsenSys 的 Teku 是一个基于 Java 的以太坊共识客户端，提供全面的企业级功能。它包括完整的信标节点实现、验证者客户端、用于节点管理的 REST API、用于监控的 Prometheus 指标以及验证者签名密钥的外部密钥管理。Teku 适用于需要可扩展性和运维控制的企业级以太坊部署。
 
-Noteworthy Features:
-- [Validator Client](https://docs.teku.consensys.io/concepts/proof-of-stake)
-- [Slashing Protection](https://docs.teku.consensys.io/how-to/prevent-slashing/use-a-slashing-protection-file)
-- [Builder and MEV-boost](https://docs.teku.consensys.io/concepts/builder-network)
-- [Detect Doppelganger](https://docs.teku.consensys.io/how-to/prevent-slashing/detect-doppelgangers)
-- [Prometheus and Grafana](https://docs.teku.consensys.io/how-to/monitor/use-metrics)
+值得注意的功能：
+- [验证者客户端](https://docs.teku.consensys.io/concepts/proof-of-stake)
+- [罚没保护 (Slashing Protection)](https://docs.teku.consensys.io/how-to/prevent-slashing/use-a-slashing-protection-file)
+- [Builder 和 MEV-boost](https://docs.teku.consensys.io/concepts/builder-network)
+- [检测分身 (Doppelganger)](https://docs.teku.consensys.io/how-to/prevent-slashing/detect-doppelgangers)
+- [Prometheus 和 Grafana](https://docs.teku.consensys.io/how-to/monitor/use-metrics)
 
 ### Grandine
-Grandine is a fast and lightweight Ethereum consensus client designed with a focus on high performance and simplicity. It's written in Rust, same as Lighthouse and shares some of its libraries. 
-Developed with parallelization and efficient resource utilization at its core, Grandine aims to push the boundaries of Ethereum's consensus layer by offering a streamlined alternative to existing clients.
-Its architecture is optimized to minimize latency and maximize throughput on high end machines, making it well-suited for environments where high performance is critical.
+Grandine 是一个快速且轻量级的以太坊共识客户端，专注于高性能和简约性。它用 Rust 编写，与 Lighthouse 相同并共享其部分库。Grandine 以并行化和高效的资源利用为核心设计，旨在通过提供现有客户端的精简替代方案来推动以太坊共识层的边界。其架构经过优化，以最小化延迟并最大化高端机器上的吞吐量，使其非常适合需要高性能的环境。
 
-Noteworthy Features:
-- [Validator Client](https://docs.grandine.io/validator_client.html)
-- [Slashing Protection](https://docs.grandine.io/slashing_protection.html)
-- [Builder and MEV](https://docs.grandine.io/builder_api_and_mev.html)
-- [Running a Slasher](https://github.com/grandinetech/grandine/tree/develop/slasher)
-- [Prometheus](https://docs.grandine.io/metrics.html) and [Grafana](https://github.com/grandinetech/grandine/tree/develop/metrics)
+值得注意的功能：
+- [验证者客户端](https://docs.grandine.io/validator_client.html)
+- [罚没保护 (Slashing Protection)](https://docs.grandine.io/slashing_protection.html)
+- [Builder 和 MEV](https://docs.grandine.io/builder_api_and_mev.html)
+- [运行 Slasher](https://github.com/grandinetech/grandine/tree/develop/slasher)
+- [Prometheus](https://docs.grandine.io/metrics.html) 和 [Grafana](https://github.com/grandinetech/grandine/tree/develop/metrics)
 
 ### Caplin
 
-Caplin is a consensus client integrated within Erigon execution client. It's basically an extra feature in Erigon that allows to run it without any external CL.  
+Caplin 是一个集成在 Erigon 执行客户端中的共识客户端。它基本上是 Erigon 中的一个额外功能，允许在没有外部 CL 的情况下运行它。
 
 - https://erigon.gitbook.io/erigon/advanced-usage/consensus-layer/caplin
 - https://github.com/ledgerwatch/erigon/?tab=readme-ov-file#caplin
 
 ### LambdaClass
 
-LambdaClass develops a client written in Elixir. It has been started during EPF4 and grew into fully featured implementation. It is still actively developed and not used in production.
+LambdaClass 开发了一个用 Elixir 编写的客户端。它在 EPF4 期间启动，并已发展成功能完整的实现。它仍在积极开发中，尚未用于生产环境。
 
 - https://github.com/lambdaclass/lambda_ethereum_consensus
 
-## Additional resources
+## 额外资源
 
 - [ETH Docker](https://eth-docker.net/)
 - [Ethernodes](https://ethernodes.org/)
-- [Client Diversity](https://clientdiversity.org/)
-- [Run the majority client at your own peril!](https://dankradfeist.de/ethereum/2022/03/24/run-the-majority-client-at-your-own-peril.html)
-- [Ethereum Hardware Resource Analysis](https://www.migalabs.io/blog/post/ethereum-hardware-resource-analysis-update)
+- [客户端多样性 (Client Diversity)](https://clientdiversity.org/)
+- [运行多数客户端，后果自负！](https://dankradfeist.de/ethereum/2022/03/24/run-the-majority-client-at-your-own-peril.html)
+- [以太坊硬件资源分析](https://www.migalabs.io/blog/post/ethereum-hardware-resource-analysis-update)

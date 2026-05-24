@@ -1,50 +1,50 @@
 # Keccak256
 
-Keccak256 is a cryptographic hash function prominently used in the Ethereum blockchain. 
+Keccak256 是一种在以太坊区块链中广泛使用的密码学哈希函数（cryptographic hash function）。
 
-## Brief History
+## 简史
 
-Keccak256 originated as a submission to the [NIST cryptographic hash algorithm competition](https://keccak.team/files/Keccak-submission-3.pdf). This competition aimed to identify a new secure hash algorithm to replace SHA-1. The KECCAK algorithm was designed by a team comprising Guido Bertoni, Joan Daemen, Michaël Peeters, and Gilles Van Assche. 
+Keccak256 最初是提交给 [NIST 密码学哈希算法竞赛](https://keccak.team/files/Keccak-submission-3.pdf)的参赛作品。该竞赛旨在确定一个新的安全哈希算法来替代 SHA-1。KECCAK 算法由 Guido Bertoni、Joan Daemen、Michaël Peeters 和 Gilles Van Assche 组成的团队设计。
 
-## Keccak design
+## Keccak 设计
 
-Keccak stands out for its sponge construction, a unique feature that allows it to, "absorb," input data of any length and subsequently, "squeeze," out a hash of the desired length.
+Keccak 以其海绵结构（sponge construction）而著称，这一独特特性使其能够"吸收"任意长度的输入数据，然后"挤出"所需长度的哈希值。
 
-The sponge function, central to Keccak's design, operates in two distinct phases: absorption and squeezing. 
+海绵函数（sponge function）是 Keccak 设计的核心，在两个不同阶段运行：吸收和挤压。
 
-### Absorption Phase
+### 吸收阶段（Absorption Phase）
 
-- **Input Processing**: During this phase, the input data is divided into blocks and XORed with the sponge's state, known as the bitrate.
-- **Bitrate (`r`)**: The bitrate is a parameter defining the number of bits in the state that interact directly with the input. It determines the efficiency and throughput of the data absorption process.
-- **State Permutation**: After each XOR operation, a permutation function is applied to the entire state, ensuring thorough mixing of the input and state.
+- **输入处理**：在此阶段，输入数据被分成块并与海绵状态（sponge's state）进行异或（XOR）操作，该状态称为比特率（bitrate）。
+- **比特率（`r`）**：比特率是定义状态中与输入直接交互的位数的参数。它决定了数据吸收过程的效率和吞吐量。
+- **状态置换（State Permutation）**：每次 XOR 操作后，对整个状态应用置换函数，确保输入和状态的充分混合。
 
-### Squeezing Phase
+### 挤压阶段（Squeezing Phase）
 
-- **Output Generation**: Once the absorption is complete, the squeezing phase begins. Here, the output hash is generated from the bitrate portion of the state.
-- **Arbitrary Output Length**: The squeezing phase can produce an output of any desired length.
+- **输出生成**：一旦吸收完成，挤压阶段开始。此时，从状态的比特率部分生成输出哈希。
+- **任意输出长度**：挤压阶段可以生成任意所需长度的输出。
 
-For a deeper understanding of Keccak's internal workings, the [Keccak reference](https://keccak.team/files/CSF-0.1.pdf) provides detailed insights into its algorithms and security features.
+要更深入地了解 Keccak 的内部工作原理，[Keccak 参考文档](https://keccak.team/files/CSF-0.1.pdf)提供了关于其算法和安全特性的详细见解。
 
-## EVM Implementation
+## EVM 实现
 
-The EVM (Ethereum Virtual Machine) processes the execution of transactions for the Ethereum blockchain with a stack based architecture. EVM opcodes are predefined instructions that the EVM interprets and subsequently executes to fulfill transaction and run the smart contracts. There are arithmetic, environmental, control flow, and stack operations Opcodes. Now there is no keccak256 opcode, but there is a SHA3 opcode. The SHA3 opcode is used to encrypt input data from the stack and outputs a Keccak256 hash.
+EVM（以太坊虚拟机）以基于堆栈的架构处理以太坊区块链交易的执行。EVM 操作码（opcodes）是预定义的指令，EVM 解释并随后执行以完成交易并运行智能合约。操作码包括算术、环境、控制流和堆栈操作等类型。目前没有 keccak256 操作码，但有一个 SHA3 操作码。SHA3 操作码用于加密来自堆栈的输入数据并输出一个 Keccak256 哈希。
 
-The [Ethereum Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf), outlines other implementations of Keccak256 in the Ethereum blockchain:
+[以太坊黄皮书](https://ethereum.github.io/yellowpaper/paper.pdf)概述了 Keccak256 在以太坊区块链中的其他实现：
 
-### Usage in Block Creation and Root Data Structure
+### 在区块创建和根数据结构中的使用
 
-- **Block Header Fields**: Various fields in the block header, such as `parentHash` and `stateRoot`, use the Keccak 256-bit hash. This includes hashing the entire header of the parent block, the root node of the state trie, and the root nodes of the trie structures for transactions and receipts.
-- **Merkle Patricia Tree**: Ethereum employs a Merkle Patricia Tree to encode its state, where each node in the tree is identified through the Keccak 256-bit hash of its content. This structure underpins the stateRoot field in the block header.
-- **Storage Contents Encoding**: The hash is used to encode the storage contents of accounts, mapping the Keccak 256-bit hash of integer keys to the RLP-encoded integer values.
+- **区块头字段**：区块头中的各种字段，如 `parentHash` 和 `stateRoot`，使用 Keccak 256 位哈希。这包括对父区块的整个头部、状态 trie 的根节点以及交易和收据 trie 结构的根节点进行哈希。
+- **Merkle Patricia 树**：以太坊采用 Merkle Patricia 树来编码其状态，其中树中每个节点通过其内容的 Keccak 256 位哈希来标识。此结构支撑着区块头中的 stateRoot 字段。
+- **存储内容编码**：该哈希用于编码账户的存储内容，将整数键的 Keccak 256 位哈希映射到 RLP 编码的整数值。
 
-In all these instances, Keccak256's role is critical for ensuring data integrity, facilitating efficient data retrieval, and supporting the blockchain's underlying security mechanisms.
+在所有这些实例中，Keccak256 的角色对确保数据完整性、促进高效的数据检索以及支持区块链的底层安全机制至关重要。
 
 ## Keccak256 vs SHA3-256
 
-[Quoting Nick Johnson from Ethereum](https://github.com/ethereum/go-ethereum/pull/2940#issuecomment-274809794):
-> SHA3-256 is Keccak256, with the exception of a change in how data is padded. Keccak256 is used because Ethereum's protocol was defined after it was apparent that Keccak256 was the winner of the SHA3 competition, but before the padding change was made.
+[引用以太坊的 Nick Johnson](https://github.com/ethereum/go-ethereum/pull/2940#issuecomment-274809794)：
+> SHA3-256 是 Keccak256，只是数据填充方式有所改变。使用 Keccak256 是因为以太坊协议是在明确 Keccak256 赢得 SHA3 竞赛之后，但在填充方式改变之前定义的。
 
-## References
+## 参考文献
 
 - [NIST SHA-3 Competition](https://keccak.team/files/Keccak-submission-3.pdf)
 - [Ethereum Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf)

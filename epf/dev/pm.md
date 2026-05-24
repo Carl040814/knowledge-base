@@ -1,22 +1,22 @@
-# Core development coordination 
+# 核心开发协调 (Core development coordination)
 
-> :warning: This article is a [stub](https://en.wikipedia.org/wiki/Wikipedia:Stub), help the wiki by [contributing](/contributing.md) and expanding it.
+> :warning: 本文是一个待完善的草稿 (stub)，欢迎通过 [做出贡献](/contributing.md) 并对其进行扩展来帮助维基。
 
-Because of the approach of client diversity and decentralization, Ethereum core development is spread across many teams from various organizations. Roughly estimated, there is around 200+ client developers, researchers, testers and other contributors split across ~20 teams. 
+由于采用了客户端多样性 (client diversity) 和去中心化 (decentralization) 的方法，以太坊 (Ethereum) 的核心开发分散在来自不同组织的许多团队中。粗略估计，大约有 200 多个客户端开发者 (client developers)、研究人员、测试人员和其他贡献者，分布在约 20 个团队中。
 
-To effectively maintain and implement various initiatives affecting the Ethereum protocol, all of these people need be able to reach consensus and collaborate in a productive manner. Generally, this is possible thanks to free and open source nature of Ethereum and it's design and development based unix philosophy but still requires lot of coordination work. 
+为了有效地维护和实施影响以太坊协议的各种倡议，所有这些人都需要能够达成共识并以富有成效的方式进行协作。通常，这得益于以太坊的免费和开源性质以及其基于 Unix 哲学的开发和设计，但仍然需要大量的协调工作。
 
-## Ethereum PM repository
+## 以太坊项目管理代码库 (Ethereum PM repository)
 
-The [ethereum/pm](https://github.com/ethereum/pm) repository is used for Ethereum project management purposes. It serves as a coordination for planning developer calls and archiving their recordings. 
+[ethereum/pm](https://github.com/ethereum/pm) 代码库用于以太坊的项目管理 (project management) 目的。它作为规划开发者会议并对会议录音进行归档的协调中心。
 
-*main use:*
- - Execution and Consensus Layer AllCoreDevs meetings
+*主要用途：*
+ - 执行层与共识层全体核心开发者会议 (Execution and Consensus Layer AllCoreDevs meetings)
 
-*secondary uses:*
- - Breakout Rooms on various protocol-related topics (e.g. EOF, account abstraction, etc)
- - There's a Google Calendar tracking upcoming protocol meetings.
+*次要用途：*
+ - 针对各种协议相关主题（例如 EOF、账户抽象 (account abstraction) 等）的分组讨论会议 (Breakout Rooms)
+ - 跟踪即将举行的协议会议的谷歌日历 (Google Calendar)
 
-### Resources
+### 资源 (Resources)
 
-- [Ethereum Governance by Tim Beiko](https://hackmd.io/@timbeiko/eth-governance)
+- [以太坊治理 (Ethereum Governance) - Tim Beiko 撰写](https://hackmd.io/@timbeiko/eth-governance)

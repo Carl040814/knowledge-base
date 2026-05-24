@@ -1,393 +1,369 @@
-# ePBS Design Specifications
+# ePBS 设计规范 (ePBS Design Specifications)
 
-The [current ePBS specification](https://hackmd.io/@potuz/rJ9GCnT1C) and the [GitHub repo](https://github.com/potuz/consensus-specs/tree/epbs_stripped_out/specs/_features/epbs) address a critical issue in Ethereum's current implementation of PBS[^1][^2][^11]. Traditionally, both proposers and builders have had to rely on intermediaries through [MEV-Boost](/docs/wiki/research/PBS/mev-boost.md), which introduces trust and censorship concerns as outlined in the [ePBS document](/docs/wiki/research/PBS/ePBS.md). The ePBS specifications framework modifies this dynamic by changing the necessity of intermediaries ("must") to an option ("may"), allowing for a more trustless interaction within the Ethereum ecosystem. 
+[当前的 ePBS 规范](https://hackmd.io/@potuz/rJ9GCnT1C) 和 [GitHub 仓库](https://github.com/potuz/consensus-specs/tree/epbs_stripped_out/specs/_features/epbs) 解决了解耦以太坊当前 提议者-构建者分离 (Proposer-Builder Separation, PBS) 实现中的一个关键问题[^1][^2][^11]。传统上，提议者和构建者都必须通过 [MEV-Boost](/docs/wiki/research/PBS/mev-boost.md) 依赖中介，正如 [ePBS 文档](/docs/wiki/research/PBS/ePBS.md) 中所概述的那样，这引入了信任和审查方面的隐忧。ePBS 规范框架通过将中介的必要性从“必须 (must)”更改为“可以 (may)”，改变了这种动态，从而允许在以太坊生态系统内进行更加无信任的交互。
 
-## Specifications Overview
+## 规范概述 (Specifications Overview)
 
-The [ePBS specification](https://github.com/potuz/consensus-specs/tree/epbs_stripped_out/specs/_features/epbs) is divided into separate components to build on top of the existing specifications of Ethereum components. 
-- `Beacon-chain.md`: This document specifies the beacon chain specifications of the ePBS feature[^6].
-- `Validator.md`: This document specifies the honest validator behavior specifications of the ePBS feature[^7].
-- `Builder.md`: This document specifies the honest builder specifications of the ePBS feature[^8].
-- `Engine.md`: This document specifies the Engine APi changes due ePBS fork[^9].
-- `fork-choice.md`: This document specifies the changes to the fork-choice due to the ePBS upgrade[^10].
+[ePBS 规范](https://github.com/potuz/consensus-specs/tree/epbs_stripped_out/specs/_features/epbs) 被划分为独立的组件，以构建在现有的以太坊组件规范之上。
+- `Beacon-chain.md`：此文档指定了 ePBS 功能的信标链规范[^6]。
+- `Validator.md`：此文档指定了 ePBS 功能的诚验证者行为规范[^7]。
+- `Builder.md`：此文档指定了 ePBS 功能的诚实构建者规范[^8]。
+- `Engine.md`：此文档指定了由于 ePBS 分叉而引起的引擎 API (Engine API) 更改[^9]。
+- `fork-choice.md`：此文档指定了由于 ePBS 升级对分叉选择 (fork-choice) 带来的修改[^10]。
 
+## ePBS 规范的主要改进 (Main Improvements of the ePBS specification)
 
-## Main Improvements of the ePBS specification
+**信任最小化 (Trust Minimization)**：它通过允许提议者和构建者更加独立地运行，减少了对中介信任的必要性，从而降低了操纵风险和信任依赖。
 
-**Trust Minimization**: It minimizes the necessity of trust in intermediaries by allowing proposers and builders to operate more independently, reducing the risk of manipulations and trust dependencies.
+**最小化兼容性更改 (Minimal Changes for Compatibility)**：该设计实现了维持与当前共识和执行客户端运行兼容性所需的最小更改数量。它遵循现有的 12 秒时隙时间 (slot time)，确保网络运行的连续性和稳定性。
 
-**Minimal Changes for Compatibility**: The design implements the least number of changes necessary to maintain compatibility with current consensus and execution client operations. It adheres to the existing 12-second slot time, ensuring continuity and stability in the network's operation.
+**抗审查性 (Censorship Resistance)**：它通过根据 [EIP-7547](https://eips.ethereum.org/EIPS/eip-7547) 引入前向强制包含列表 (forward forced inclusion lists)，增强了抗审查性，确保某些交易必须被包含，这有助于维护网络完整性。
 
-**Censorship Resistance**: It enhances censorship resistance by incorporating forward forced inclusion lists as per [EIP-7547](https://eips.ethereum.org/EIPS/eip-7547), ensuring that certain transactions must be included, which helps in maintaining network integrity.
+**层级增强 (Layer Enhancements)**：更改主要发生在共识层 (Consensus Layer, CL)，对执行层 (Execution Layer, EL) 所需的调整极少，主要与包含列表 (inclusion lists) 的处理相关。
 
-**Layer Enhancements**: The changes are primarily in the consensus layer (CL), with minimal adjustments required on the Execution Layer (EL), mainly related to the handling of inclusion lists.
+**安全保证 (Safety Guarantees)**：
+- **提议者安全性 (Proposer Safety)**：它确保提议者免受串通的提议者和构建者发起的 1-slot 重组攻击 (reorganization attacks)，即使这些攻击者控制了网络拓扑并且拥有高达 20% 的质押权益 (stake)。
+- **构建者安全性 (Builder Safety)**：为构建者提供了防范连续提议者串通和操纵的保证，包括确保被隐匿和被揭示的负载安全性的措施。
+- **解包保证 (Unbundling Guarantees)**：构建者在所有攻击场景下都受到保护，确保交易处理和执行的完整性。
 
-**Safety Guarantees**:
+**验证者自建 (Self-Building for Validators)**：验证者保留了自行构建其负载的能力，这对于保持独立性和灵活性至关重要。
 
-- **Proposer Safety**: It ensures that proposers are protected against 1-slot reorganization attacks by colluding proposers and builders, even those controlling network topology with up to 20% of the stake.
-- **Builder Safety**: Guarantees are in place for builders against collusion and manipulation by consecutive proposers, including measures to ensure the safety of both withheld and revealed payloads.
-- **Unbundling Guarantees**: Builders are protected under all attack scenarios, ensuring integrity in transaction handling and execution.
+**可组合性 (Composability)**：该规范旨在与时隙拍卖或执行票证拍卖 (execution ticket auctions) 等其他机制可组合，从而增强未来创新的灵活性和潜力。
 
-**Self-Building for Validators**: Validators retain the capability to self-build their payloads, which is crucial for maintaining independence and flexibility.
+**实现细节 (Implementation Details)：**
 
-**Composability**: The specification is designed to be composable with other mechanisms like slot auctions or execution ticket auctions, enhancing flexibility and potential for future innovations.
+ePBS 规范引入了特定的角色和职责：
+- **构建者 (Builders)**：为负载承诺提交竞价的验证者。
+- **PTC (负载时效性委员会, Payload Timeliness Committee)**：一个验证负载时效性和有效性的新委员会。
 
+在每个时隙期间，提议者收集竞价，并在选择某个竞价后，提交包含构建者已签名承诺的区块。验证者随后根据这些承诺在构建者和提议者之间调整经济信用额度 (financial credits)。构建者稍后揭示其执行负载，从而履行其义务。基于区块的生产和揭示情况，时隙结果可能会有所不同——遗漏 (missed)、空块 (empty) 或满块 (full)——其中 PTC 在确定时隙结论的性质方面发挥着关键作用。
 
-**Implementation Details:**
+该实现包含了对 ePBS 功能至关重要的 [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251) 和 [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002)。EIP-7251 将以太坊验证者的最大有效余额提高到 2048 ETH，同时保持 32 ETH 的最小值，以在不丧失安全性的情况下减少验证者的数量[^3]。EIP-7002 允许验证者使用特殊的提现凭证退出信标链，从而增强了质押的灵活性和安全性[^4]。
 
-The ePBS specification introduces specific roles and responsibilities:
-
-- **Builders**: Validators that submit bids for payload commitments.
-- **PTC (Payload Timeliness Committee)**: A new committee that verifies the timeliness and validity of payloads.
-
-During each slot, proposers collect bids, and upon selecting a bid, they submit their blocks with a signed commitment from the builder. Validators then adjust financial credits between builders and proposers based on these commitments. Builders later reveal their execution payloads, fulfilling their obligations. The slot outcomes can vary—missed, empty, or full—based on the production and revelation of the blocks, with the PTC playing a critical role in determining the nature of the slot's conclusion.
-
-The implementation includes [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251) and [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002), which are essential for ePBS function. EIP-7251 increases the maximum balance for Ethereum validators to 2048 ETH, keeping a minimum of 32 ETH to reduce the number of validators without losing security[^3]. EIP-7002 allows validators to exit the beacon chain using special withdrawal credentials, enhancing staking flexibility and security[^4].
-
-## Anatomy of a Slot Timeline
-
+## 时隙时间线剖析 (Anatomy of a Slot Timeline)
 
 ```mermaid
 sequenceDiagram
-    participant Proposer
-    participant EL as Execution Layer
-    participant Builders
-    participant Validators
-        participant Aggregators
-    participant PTC as Payload Timeliness Committee
-    participant Network as P2P Network
+    participant Proposer as 提议者 (Proposer)
+    participant EL as 执行层 (Execution Layer)
+    participant Builders as 构建者 (Builders)
+    participant Validators as 验证者 (Validators)
+    participant Aggregators as 聚合者 (Aggregators)
+    participant PTC as 负载时效性委员会 (PTC)
+    participant Network as P2P 网络 (Network)
 
-    
-    Note over Proposer: Preparation before the slot begins
+    Note over Proposer: 时隙开始前的准备工作
     rect rgb(191, 223, 255)
-    Proposer->>EL: Request full IL
-    EL-->>Proposer: Provide transactions and addresses
-    Proposer->>Proposer: Fill and sign the IL summary
-    Proposer->>Network: Broadcast IL
-
+    Proposer->>EL: 请求完整的包含列表 (IL)
+    EL-->>Proposer: 提供交易和地址
+    Proposer->>Proposer: 填充并签名 IL 摘要
+    Proposer->>Network: 广播 IL
     end
 
-    Note over Proposer: Start of the slot at Second t=0
+    Note over Proposer: 时隙开始于第 t=0 秒
     rect rgb(191, 223, 255)
-    Note over Builders: Builders prepare bids
-    Builders->>Proposer: Send bids over p2p network or direct
-    Proposer->>Proposer: Select a builder's bid
-
-    Proposer->>+Validators: Prepare and broadcast SignedBeaconBlock with builder's bid
-
-    Note over Validators: Between second t=0 and t=3
-    Validators->>Validators: Independently run state <br>transition function on beacon block
-    Validators->>-EL: Verify proposer's signature and validate IL
+    Note over Builders: 构建者准备竞价
+    Builders->>Proposer: 通过 p2p 网络或直接发送竞价
+    Proposer->>Proposer: 选择构建者的竞价
+    Proposer->>+Validators: 准备并广播带有构建者竞价的 SignedBeaconBlock
+    Note over Validators: 在第 t=0 到 t=3 秒之间
+    Validators->>Validators: 在信标区块上独立运行状态过渡函数
+    Validators->>-EL: 验证提议者签名并验证 IL
     end
 
-    Note over Validators: Second t=3
+    Note over Validators: 第 t=3 秒
     rect rgb(191, 223, 255)
-    Validators->>+Validators: Attest for the presence<br> of beacon block and IL
-    Validators->>-Network: Broadcast attestations    
+    Validators->>+Validators: 证明信标区块和 IL 的存在
+    Validators->>-Network: 广播证明
     end
 
-    Note over Builders: Second t=6
+    Note over Builders: 第 t=6 秒
     rect rgb(191, 223, 255)
-    Aggregators->>+Aggregators: Aggregate and submit<br> attestation aggregates
-    Aggregators->>-Network: Submit aggregates
-
-    Builders->>+Builders: Monitor subnet, decide on<br> payload withholding
-    Builders->>-Network: Broadcast execution payload
+    Aggregators->>+Aggregators: 聚合并提交证明聚合体
+    Aggregators->>-Network: 提交聚合体
+    Builders->>+Builders: 监控子网，决定是否隐匿负载
+    Builders->>-Network: 广播执行负载
     end
-    
 
-    Note over PTC: Second t=9
+    Note over PTC: 第 t=9 秒
     rect rgb(191, 223, 255)
-    PTC->>PTC: Assess execution payload timeliness and status
-    alt Payload Status
-        Note over PTC: PAYLOAD_PRESENT ==> If payload envelope is seen timely <br>with payload_withheld = False
-        PTC-->>Network: Vote PAYLOAD_PRESENT
-        Note over PTC: PAYLOAD_WITHHELD ==> If payload envelope is seen timely <br>with payload_withheld = True
-        PTC-->>Network: Vote PAYLOAD_WITHHELD
-        Note over PTC: PAYLOAD_ABSENT ==> If beacon block was not seen or <br>payload was not seen 
-        PTC-->>Network: Vote PAYLOAD_ABSENT
+    PTC->>PTC: 评估执行负载的时效性和状态
+    alt 负载状态
+        Note over PTC: PAYLOAD_PRESENT ==> 如果负载信封被及时看到且 payload_withheld = False
+        PTC-->>Network: 投票 PAYLOAD_PRESENT
+        Note over PTC: PAYLOAD_WITHHELD ==> 如果负载信封被及时看到且 payload_withheld = True
+        PTC-->>Network: 投票 PAYLOAD_WITHHELD
+        Note over PTC: PAYLOAD_ABSENT ==> 如果未看到信标区块或未看到负载
+        PTC-->>Network: 投票 PAYLOAD_ABSENT
     end
     end
 
-    Network-->>Validators: Import and validate all the data: IL, beacon block, <br>attestations, payload attestations, full execution payload    
+    Network-->>Validators: 导入并验证所有数据：IL、信标区块、证明、负载证明、完整执行负载
     rect rgb(191, 223, 255)
-    alt Status Options
-        Note over Validators: Full Block ==> Both the beacon block <br>and execution payload imported
-        Note over Validators: Empty Block ==> Beacon block imported,<br> payload not revealed on time
-    
-        Note over Validators: Skipped Slot ==> No consensus block imported
+    alt 状态选项
+        Note over Validators: 完整区块 ==> 导入了信标区块 and 执行负载
+        Note over Validators: 空区块 ==> 导入了信标区块，负载未按时揭示
+        Note over Validators: 跳过的时隙 ==> 未导入共识区块
     end
     end
+
     rect rgb(191, 223, 255)
-    Validators->>Validators: Evaluate the new head of the blockchain<br> based on the above outcomes    
+    Validators->>Validators: 根据上述结果评估区块链的新头部
     end
-    Note over Validators: End of the slot
+    Note over Validators: 时隙结束
 ```
 
-_Figure – New Slot Anatomy Flow based on the ePBS specs._
+_图 – 基于 ePBS 规范的新时隙剖析流程。_
 
+基于 ePBS 规范的新时隙剖析流程说明：
 
-Explanation of the new slot anatomy flow based on the ePBS specs:
+### 时隙前的准备工作 (Preparation Before the Slot)
 
-### Preparation Before the Slot
+- **提议者**通过向 EL 请求完整的包含列表 (inclusion list, IL)[^9]，填充并签名摘要，然后将其广播到 p2p 网络来进行准备。
 
-- **Proposer** prepares by requesting a full inclusion list from the EL[^9], filling and signing the summary, and then broadcasting it to the p2p network.
+**ePBS 中的新机制**：IL 是 EL 中的一个新组件，用于提议者保证网络的抗审查性。它们在“前向包含 (forward inclusion)”基础上运行，提议者和验证者交互以确保交易被准确且高效地向前传递[^5]。
 
-**New in ePBS:** The IL is new component in the EL for proposers to guarantee censorship resistance of the network. They operate on a forward inclusion basis, where proposers and validators interact to ensure that transactions are carried forward accurately and efficiently[^5].
+**包含列表容器 (Inclusion List Containers)**：
+- **InclusionListSummary**：包含提议者的索引、时隙和执行地址列表。
+- **SignedInclusionListSummary**：包含上述摘要以及提议者的签名。
+- **InclusionList**：包含已签名的摘要、信标区块的父区块哈希以及交易列表。
 
-**Inclusion List Containers:**
-- **InclusionListSummary:** Contains the proposer's index, the slot, and a list of execution addresses.
-- **SignedInclusionListSummary:** Includes the above summary with a proposer's signature.
-- **InclusionList:** Comprises the signed summary, the parent block hash of the beacon block, and a list of transactions.
+**从 EL 请求 IL**：
+- 提议者通过调用函数 `get_execution_inclusion_list` 从 execution layer 检索要在下一个区块中包含的交易，从而确保它们根据当前状态是有效的。响应是一个容器 `GetInclusionListResponse`，其中包含 `transactions`（EL 所需的交易对象列表）和 `summary`（`transactions` 的摘要，包括基本的标识符，如“发送方 (from)”地址）。
 
-**Requesting IL from EL:**
-- Proposer retrieves the transactions to be included in the next block from the execution layer by calling the function `get_execution_inclusion_list`, ensuring they are valid according to the current state. The response is a container `GetInclusionListResponse` that contains `transactions` (list of transaction objects as required by the EL) and `summary` (summary of `transactions`, including essential identifiers like "from" addresses).
-**Building the IL:**
-- Proposer calls the function `build_inclusion_list` to organize received transactions into a structured format, prepares the summary for signing, and ensures compliance with network standards. The response is a container `InclusionList` that contains `SignedInclusionListSummary`, a signed transaction summary, verifying authenticity and integrity and `transactions`, the list of validated transactions ready for inclusion.
-**Broadcasting the IL:**
-- Once the IL is prepared and signed, the proposer broadcasts it to the entire network via the p2p. 
+**构建 IL**：
+- 提议者调用函数 `build_inclusion_list` 将接收到的交易组织成结构化格式，准备用于签名的摘要，并确保符合网络标准。响应是一个容器 `InclusionList`，其中包含 `SignedInclusionListSummary`（已签名的交易摘要，验证真实性和完整性）以及 `transactions`（准备好包含的已验证交易列表）。
 
+**广播 IL**：
+- 一旦准备好并签署了 IL，提议者就会通过 p2p 将其广播到整个网络。
 
-### Start of the Slot at Second t=0
+### 时隙开始于第 t=0 秒 (Start of the Slot at Second t=0)
 
-- **Builders** prepare their bids and send them to the proposer via the p2p network or directly.
-- The **Proposer** selects a builder's bid, prepares, and broadcasts a **SignedBeaconBlock** containing the builder's bid.
+- **构建者**准备好竞价，并通过 p2p 网络或直接将其发送给提议者。
+- **提议者**选择某个构建者的竞价，准备并广播包含该构建者竞价的 **SignedBeaconBlock**（已签名的信标区块）。
 
-**New in ePBS:** The inclusion of `inclusion_list_summary` attribute in `ExecutionPayload`. This field relates to the inclusion summary of certain transactions within the block, providing control over what is included in the block.
+**ePBS 中的新机制**：在 `ExecutionPayload` 中包含 `inclusion_list_summary` 属性。该字段与区块内某些交易的包含摘要相关联，从而提供了对区块中包含内容的控制。
 
-**Builders: Preparing and Sending Bids**
-- Builders prepare bid using the `ExecutionPayloadHeader` container which contains essential details like the parent block hash, fee recipient, and proposed transaction fee, etc. 
-- Builders create `SignedExecutionPayloadHeader`, a signed header `ExecutionPayloadHeader` and broadcast it.
-- Bids are sent either directly to the proposer or broadcasted over the p2p network using the `execution_payload_header` topic.
+**构建者：准备并发送竞价**
+- 构建者使用 `ExecutionPayloadHeader` 容器准备竞价，该容器包含父区块哈希、费用接收者和提议的交易费用等基本细节。
+- 构建者创建 `SignedExecutionPayloadHeader`（已签署的区块头 `ExecutionPayloadHeader`）并进行广播。
+- 竞价要么直接发送给提议者，要么使用 `execution_payload_header` 主题在 p2p 网络上广播。
 
-**Proposers: Selecting Bids and Broadcasting the Signed Beacon Block**
-- The proposer evaluates bids based on several criteria, such as the bid amount and the reliability or past performance of the builder. to select a bid. 
-- The proposer constructs a `BeaconBlockBody`, which includes the `signed_execution_payload_header` among other standard elements.
-- The function `process_block_header` processes the block header, ensuring all elements conform to the consensus rules and that the block is valid within the current chain context.
-- The block, now containing the selected execution payload header, is signed by the proposer to produce `SignedBeaconBlock`. 
-- The signed block is then broadcast over the p2p network using the `beacon_block` topic, making it available to all network participants.
-- The `ExecutionPayloadHeader` within the `BeaconBlockBody` prepared by the proposer includes `parent_block_hash` linking to the parent block in the execution layer, ensuring continuity of the chain and `block_hash` will eventually link to the hash of the `ExecutionPayload` that the builder will produce and is crucial for validators to verify the integrity and continuity of the chain.
+**提议者：选择竞价并广播已签名的信标区块**
+- 提议者基于若干标准（例如竞价金额以及构建者的可靠性或历史表现）评估竞价以选择竞价。
+- 提议者构建一个 `BeaconBlockBody`，其中包括 `signed_execution_payload_header` 以及其他标准元素。
+- 函数 `process_block_header` 处理区块头，确保所有元素符合共识规则，并且该区块在当前链上下文中是有效的。
+- 该区块（现在包含所选的 execution payload header）由提议者签名，以生成 `SignedBeaconBlock`。
+- 然后，使用 `beacon_block` 主题在 p2p 网络上广播已签名的区块，使其对所有网络参与者可用。
+- 提议者准备的 `BeaconBlockBody` 内的 `ExecutionPayloadHeader` 包含 `parent_block_hash`（连接到执行层中的父区块，确保链的连续性）和 `block_hash`（最终将连接到构建者将要生产的 `ExecutionPayload` 的哈希，这对于验证者验证链的完整性和连续性至关重要）。
 
+### 在第 t=0 秒和 t=3 秒之间 (Between Second t=0 and t=3)
 
-### Between Second t=0 and t=3
+- **验证者**独立运行状态过渡函数以验证信标区块，验证提议者的签名，并验证包含列表。
 
-- **Validators** independently run the state transition function to validate the beacon block, verify the proposer's signature and validate the inclusion list.
+**验证者：验证信标区块和包含列表**
+- 在收到 `SignedBeaconBlock` 后，验证者调用 `process_block` 函数，这是一个处理区块处理不同方面（包括头部验证、RANDAO、提议者罚没、证明等）的综合函数。
+- 对于 ePBS，特别关注 `process_execution_payload_header`，它验证区块内的执行负载头。
+- 验证者验证在 `ExecutionPayloadHeader` 中被引用的 IL。为此，他们使用 `verify_inclusion_list` 函数从交易有效性、摘要的签名完整性以及与先前同意状态的一致性方面评估 IL 的正确性，并且 IL 内的提议者索引与给定时隙的预期提议者相对应。
+- 如果区块和 IL 被成功验证，状态过渡函数 `state_transition` 会更新信标状态以反映新区块。这包括更新验证者状态、根据证明和罚没调整余额以及轮换委员会。
 
-**Validators: Validating the Beacon Block and Inclusion List**
-- Upon receiving the `SignedBeaconBlock`, validators invoke the `process_block` function, which is a comprehensive function handling different aspects of the block processing including header validation, RANDAO, proposer slashings, attestations, and more. 
-- For ePBS, particular attention is paid to `process_execution_payload_header`, which validates the execution payload header within the block.
-- Validators verify the IL that is referenced within the `ExecutionPayloadHeader`. To do that, they use the `verify_inclusion_list` function to assess the correctness of the IL in terms of transaction validity, signature integrity of the summary, and alignment with the previously agreed state, and the proposer index within the IL corresponds to the expected proposer for the given slot. 
-- If the block and IL are validated successfully, the state transition function `state_transition` updates the beacon state to reflect the new block. This includes updating validator statuses, adjusting balances based on attestations and slashings, and rotating committees.
+### 大约在第 t=3 秒 (Around Second t=3)
 
+- **验证者**证明信标区块和 IL 的存在，确保到目前为止一切正常。
 
-### Around Second t=3
+**验证者：证明信标区块**
+- 验证者调用函数 `process_attestation` 来验证和处理针对信标区块做出的每个证明。这包括验证信标区块的时隙、证明的委员会，并根据共识规则确保证明数据的正确性。
 
-- **Validators** attest to the presence of the beacon block and the IL, ensuring everything is in order up to this point.
+### 大约在第 t=6 秒 (Around Second t=6)
 
-**Validators: Attesting to Beacon Block**
-- Validators call the function `process_attestation` to verify and process each attestation made against the beacon block. This includes validating the beacon block's slot, the attestation's committee, and ensuring the correctness of the attestation data as per the consensus rules.
+- **聚合者**聚合（aggregate）并提交证明聚合体。
+- **构建者**构建并广播其执行负载。他们监控网络子网，并根据网络状况和投票决定是否隐匿其负载。
+- 构建者将交易执行所需的所有信息打包到执行负载中，放入 `ExecutionPayloadEnvelope` 容器中。这种封装确保了负载已准备好集成到信标链中。他们将字段 `payload_withheld` 设置为 false。
+- 此外，如果诚实的构建者没有按时看到共识区块，他们可以通过将 `payload_withheld` 设置为 true 来隐匿负载。
+- 他们运行函数 `process_execution_payload` 来根据当前状态处理执行负载以确保其有效性。这涉及验证交易、确保状态过渡正确以及检查负载是否符合共识规则。
+- 然后，他们对 `ExecutionPayloadEnvelope` 容器进行签名以生成 `SignedExecutionPayloadEnvelope`，之后通过 p2p 网络将其广播到主题 `execution_payload`。
 
+### 大约在第 t=9 秒 - 负载时效性委员会 (PTC) (Around Second t=9 - Payload Timeliness Committee (PTC))
 
-### Around Second t=6
+- 在时隙的第 t=9 秒，PTC 评估执行负载的时效性。该委员会由 512 名验证者组成，根据他们对执行负载的存在性以及相对于共识区块的时间安排的观察进行投票。
 
-- **Aggregators** aggregate and submit the attestation aggregates.
-- **Builders** build and broadcast their execution payloads. They monitor network subnets and decide whether to withhold their payloads based on network conditions and voting.
-- Builders package the execution payload, which includes all the necessary information for transaction execution, into the container `ExecutionPayloadEnvelope`. This encapsulation ensures that the payload is ready for integration into the beacon chain. They will set the field `payload_withheld` to be false. 
-- Additionally, an honest builder can withhold the payload if they didn't see a consensus block on timely by setting `payload_withheld` to be true.
-- They run the function `process_execution_payload` to process the execution payload against the current state to ensure its validity. It involves validating transactions, ensuring state transitions are correct, and checking that the payload aligns with the consensus rules.
-- Then, they sign the container `ExecutionPayloadEnvelope` to generate `SignedExecutionPayloadEnvelope` before broadcasting to the topic `execution_payload` via p2p network.
+**ePBS 中的新机制**：PTC 是此 ePBS 规范中引入的新组件。
+- **组成与功能**：
+  - **委员会形成**：PTC 成员是从每个信标时隙委员会的首批非构建者成员中选出的。这确保了委员会完全由在此时不担任构建者的验证者组成，从而最小化了利益冲突。
+  - **证明奖励与惩罚**：PTC 成员因正确证明负载的存在或不存在而获得标准的证明奖励。准确的证明与实际的负载状态（`full` 或 `empty`）一致，验证者因此获得完整的证明点数（目标、源和头部的及时性）。不正确的证明会导致类似于错过证明的惩罚。
+  - **证明处理**：PTC 成员对 CL 区块做出的证明将被忽略，以完全专注于负载验证任务。
+  - **区块中包含证明**：时隙 `N+1` 的提议者负责将时隙 `N` 的 PTC 证明包含在区块中。包含不正确证明没有直接的激励；因此，通常每个区块只需要一个 PTC 证明。
+- **聚合与广播**：存在两种导入 PTC 证明的方法。聚合后的证明 (`PayloadAttestation`) 被包含在上一时隙的区块中，而未聚合的证明 (`PayloadAttestationMessage`) 会被广播并在当前时隙中实时处理。
 
+**PTC 验证者评估并投票表决执行负载时效性**
+- 每个 PTC 验证者独立检查他们是否从应该揭示它的构建者那里收到了有效的 `ExecutionPayload`（根据当前信标区块中包含的已签名 `ExecutionPayloadHeader`）。PTC 验证者基于其存在性以及被接收的时间来对负载的时效性进行投票。
 
-### Around Second t=9 - Payload Timeliness Committee (PTC)
+**广播负载时效性证明**
+- 如果确认执行负载存在且及时，PTC 验证者生成并广播负载时效性证明，确认这些观察。`PayloadAttestation` 容器捕获了验证者关于负载时效性和存在性的证明。
+- 函数 `get_payload_attesting_indices` 通过检查 `PayloadAttestation` 中的聚合位来确定 PTC 中哪些验证者正在证明负载的存在性和时效性。
+- 证明通过 `payload_attestation_message` 主题在 p2p 网络上广播。
 
-- At second t=9 of the slot, the PTC assesses the timeliness of the execution payload. This committee, consisting of 512 validators, votes based on their observation of the execution payload's presence and timing relative to the consensus block.
+**在信标区块中聚合并包含负载证明**
+- 聚合者收集单个 `PayloadAttestation` 消息，对其进行聚合，并确保它们被包含在即将到来的信标区块中，以记录并最终确定验证者对负载时效性的共识。它们被聚合到一个 `IndexedPayloadAttestation` 容器中，该容器包括做出证明的验证者索引列表、负载证明数据以及集体签名。
 
-**New in ePBS:** The PTC is a new component introduced in this epbs specs. 
-- **Composition and Function:**
-  - **Committee Formation:** PTC members are selected from the first non-builder members of each beacon slot committee. This ensures that the committee is comprised solely of validators who are not concurrently serving as builders, thereby minimizing conflicts of interest.
-  - **Attestation Rewards and Penalties:** PTC members receive standard attestation rewards for correctly attesting to the presence or absence of payloads. Accurate attestations align with the actual payload status (`full` or `empty`), for which validators receive full attestation credits (target, source, and head timely). Incorrect attestations result in penalties akin to missed attestations.
-  - **Attestation Handling:** Attestations by PTC members to the CL block are disregarded to focus solely on payload verification tasks.
-  - **Inclusion of Attestations in Blocks:** The proposer for slot `N+1` is responsible for including PTC attestations from slot `N` in the block. There are no direct incentives for including incorrect attestations; thus, typically only one PTC attestation per block is necessary.
-- **Aggregation and Broadcast:** Two methods exist for importing PTC attestations. Aggregated attestations (`PayloadAttestation`) are included in blocks for the previous slot, while unaggregated attestations (`PayloadAttestationMessage`) are broadcasted and processed in real-time for the current slot.
+**根据证明更新信标链状态**
+- 信标链调用 `process_payload_attestation` 函数来处理和验证传入的负载证明。它确保证明数据正确且签名有效，并将此信息集成到信标状态中。信标链状态根据负载证明进行更新。
+- 这些证明通过影响各种区块的权重并潜在地导致基于执行负载的感知时效性和存在性的不同链重组来影响分叉选择。
 
-**PTC Validators Assess and Vote on Execution Payload Timeliness**
-- Each PTC validator independently checks if they have received a valid `ExecutionPayload` from the builder that was supposed to reveal it according to the signed `ExecutionPayloadHeader` included in the current beacon block. PTC Validators vote on the timeliness of the payload based on its presence and the timing of its reception.
+**奖励计算与分配**：对于正确证明负载状态的每个验证者，它设置参与标志并根据预定义的权重 (`PARTICIPATION_FLAG_WEIGHTS`) 计算奖励。奖励被聚合，并且证明的提议者按比例获得奖励，计算中考虑了协议规范中定义的各种权重和分母 (`WEIGHT_DENOMINATOR`、`PROPOSER_WEIGHT`)。
 
-**Broadcast Payload Timeliness Attestation**
-- If the execution payload is confirmed to be present and timely, PTC validators produce and broadcast payload timeliness attestations, confirming these observations. `PayloadAttestation` container captures the validators' attestations regarding the payload's timeliness and presence.
-- `get_payload_attesting_indices` function determines which validators in the PTC are attesting to the payload's presence and timeliness by checking their aggregation bits in the `PayloadAttestation`. 
-- Attestations are broadcast on the p2p network via the `payload_attestation_message` topic.
+**提议者奖励**：该函数最终计算提议者的奖励，并通过调用 `increase_balance` 方法更新提议者的余额。
 
-**Aggregate and Include Payload Attestations in Beacon Blocks**
-- Aggregators collect individual `PayloadAttestation` messages, aggregate them, and ensure their inclusion in upcoming beacon blocks to record and finalize the validators' consensus on payload timeliness. They are aggregated into an `IndexedPayloadAttestation` container, which includes a list of validator indices that attested, the payload attestation data, and a collective signature.
-
-**Update Beacon Chain State Based on Attestations**
-- `process_payload_attestation` function is invoked by the beacon chain to process and validate incoming payload attestations. It ensures that the attestation data is correct and that the signatures are valid, integrating this information into the beacon state. The beacon chain state is updated based on the payload attestations. 
-- These attestations influence the fork choice by affecting the weights of various blocks and potentially leading to different chain reorganizations based on the perceived timeliness and presence of execution payloads.
-
-**Reward Calculation and Distribution**: For each validator that correctly attested to the payload status, it sets participation flags and calculates rewards based on predefined weights (`PARTICIPATION_FLAG_WEIGHTS`). The rewards are aggregated, and the proposer of the attestation is rewarded proportionally, with the calculation considering various weights and denominators defined in the protocol specifications (`WEIGHT_DENOMINATOR`, `PROPOSER_WEIGHT`).
-
-**Proposer Reward**: The function finally calculates the proposer's reward and updates the proposer's balance by calling `increase_balance` method.
-
-
-### End of the Slot
-
-- As the slot concludes, validators complete several crucial tasks:
-  - **Importing and Validating**: Validators ensure they have imported and validated the inclusion list, the consensus block, all single bit and aggregated attestations, the payload attestations, and the full execution payload.
-  - **Evaluating the Blockchain's New Head**: Based on the data validated, validators make a critical decision on the chain's state.They determine whether the slot results in:
-    - **Full Block**: Both the consensus block and the corresponding execution payload have been successfully imported.
-    - **Empty Block**: The consensus block was imported, but the associated execution payload was not revealed on time.
-    - **Skipped Slot**: No consensus block was imported during the slot, leading to a skipped slot scenario.
-- The fork choice function `get_head` determines the head of the chain after considering the latest block proposals, payload attestations, and any other pertinent information such as weights from attestations and balances.
-- All nodes synchronize their states based on the fork choice's outcome, ensuring consistency across the network. This synchronization includes applying all the state transitions and updates from attested blocks and execution payloads.
-
-
-## Inclusion List Timeline
-
-**Gossip Layer Checks:**
-- Inclusion lists are verified for timing, ensuring relevance to the current or next slot.
-- Each proposer-slot pair is restricted to broadcasting one inclusion list on the network, although proposers may send different lists to different peers.
-- The number of transactions must match the summary count and not exceed the set maximum in `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- Inclusion list signatures are validated against the proposer's key, confirming their scheduled slot.
-
-**Risks and Mitigations:**
-- Broadcasting an inclusion list for the upcoming slot before a head change may lead to availability issues, although the list is still considered available.
-
-**on_inclusion_list Handler:**
-- Serves as a bridge to execution engine API calls, assuming the corresponding beacon block is processed.
-- If a beacon block's parent was empty, any new inclusion list is automatically ignored to prevent backlog.
-
-**Beacon State Tracking:**
-- Tracks proposer and slot for the most recent and previous IL to manage fulfillment and update upon new valid blocks.
-
-**EL Validation:**
-- Checks that transactions `inclusion_list.transactions` are valid and includable using the current state.
-- Ensures summary `inclusion_list.signed_summary.message.summary` accurately lists "from" addresses for the included transactions.
-- Verifies that the total gas limit of transactions does not exceed the maximum allowed `MAX_GAS_PER_INCLUSION_LIST`.
-- Ensures accounts listed have sufficient funds to cover the maximum potential gas fees `(base_fee_per_gas + base_fee_per_gas / BASE_FEE_MAX_CHANGE_DENOMINATOR) * gas_limit`.
-
-
-## Execution Payload's Timeline
-
-The processing of execution payloads in the ePBS system includes several critical steps distributed across gossip, consensus, and execution layers:
-
-**Gossip** Execution payloads are shared via the `execution_payload` pubsub topic with key validations:
-- Confirm the beacon block associated with the payload is valid.
-- Verify builder index and payload hash against the beacon block.
-- Validate the builder's signature.
-
-**Consensus State Transition** Post-gossip, payloads undergo consensus validation through `on_execution_payload` fork choice handler:
-- **Signature Verification:** Ensures the integrity of the payload signature.
-- **Withdrawals and Inclusion List Verification:** Confirms correct processing of withdrawals and adherence to the inclusion list specified by the beacon state.
-- **Payload Consistency and EL Validation:** Checks that all payload elements align with the beacon state commitments and sends the payload to the execution layer for further validation.
-- **State Updates and Verification:** Updates beacon state records and verifies the new state root to confirm accurate state transitions, `latest_block_hash` and `latest_full_slot`.
-
-**Execution Layer State Transition** The execution layer expands its role to validate `InclusionListSummary` satisfaction:
-- **Transaction and Balance Verification:** Tracks addresses involved in transactions or balance changes.
-- **Inclusion List Satisfaction:** Ensures each address in the `InclusionListSummary` is active in the payload, considering transactions and balance changes from current and previous payloads.
-- **Special Case Handling:** Manages unique scenarios such as transactions enabled by [EIP-3074](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-3074.md).
-
-
-## Payload Attestation's Timeline
-
-**Gossip** Payload attestations are broadcasted by PTC members using `PAYLOAD_ATTESTATION_MESSAGE` objects with stringent checks before propagation:
-- **Current Slot Verification:** Only attestations for the current slot are gossiped.
-- **Payload Status Validation:** Attestations must have a valid payload status to be gossiped.
-- **Single Attestation Per Member:** Only one attestation per PTC member is shared.
-- **Beacon Block Root Presence:** Attestations are linked to slots with a known beacon block root.
-- **PTC Membership Check:** Validators must be confirmed members of the PTC.
-- **Signature Verification:** Attestations must have a valid signature.
-
-**Forkchoice Handler** Upon passing gossip validation, payload attestations are processed in the forkchoice through the `on_payload_attestation_message` handler, which includes:
-- **Beacon Block Validation:** Confirms the associated beacon block is in the forkchoice store.
-- **PTC Slot Validation:** Verifies the attester is in the PTC for the specified slot.
-- **Slot Matching:** Checks that the beacon block corresponds to the attestation slot.
-- **Current Slot and Signature Checks (if not from block):** For direct broadcasts, validates the slot is current and verifies the signature.
-- **PTC Vote Update:** Updates the PTC vote tracked in the forkchoice for the given block root.
-
-
-## Beacon Block's Timeline
-
-**Gossip**
-- **Initial Validation**: `SignedBeaconBlock` enters through gossip or RPC, with critical validations focusing on the legitimacy of the parent beacon block.
-
-**on_block Handler**
-- **Beacon Block Validation**: Validates blocks based on two parent elements: the consensus layer (via `block.parent_root`) and the execution layer derived from the `signed_execution_payload_header` entry in the `BeaconBlockBody`.
-- **BeaconBlockBody Adjustments**: Modifications in `BeaconBlockBody` include removing execution payload and blob KZG commitments, adding `signed_execution_payload_header`, and new `payload_attestations`.
-
-**State Transition**
-- **Modified Functions**: `process_block` now adjusts for ePBS changes, including modifications to withdrawal processing and syncing the parent payload.
-- **Withdrawals**: Managed in two phases; deductions during consensus block processing, and fulfillments verified during execution payload processing.
-- **Execution Payload Header**: Validates builder's signature, funding, and the immediate transfer of bid amounts to the proposer, with state adjustments noted in the beacon state.
-
-**Payload Attestations** Payload Attestations `PayloadAttestation` represent a significant component within the beacon block processing, adding a layer of verification for the execution payloads by the PTC.
-
-- **PTC Committee Formation**
-  - **Committee Selection**: The `get_ptc` function is designed to assemble the PTC by selecting validators from existing beacon committees, specifically targeting validators from the end of each committee list to form the PTC. The selection process ensures that the PTC is adequately populated while minimally impacting the structure and function of the standard beacon committees.
-
-- **Processing Payload Attestations**
-  - **Attestation Requirements**: Payload attestations are required to pertain to the previous slot and match the parent beacon block root, ensuring they are timely and accurately reference the correct beacon state.
-  - **Incentives and Penalties**:
-    - **Consistency Checks**: Each attestation is checked against the beacon state to determine consistency. Consistent attestations (e.g., `PAYLOAD_PRESENT` when the slot was indeed full) result in rewards for both the proposer and the attesting validators. This aligns their incentives with the accurate and honest reporting of payload statuses.
-    - **Reward Calculation**: For consistent attestations, participation flags `PARTICIPATION_FLAG_WEIGHTS` are set for the attesting validators, and the proposer receives a reward `proposer_reward` calculated based on the base rewards of the attesters, ensuring that validators are motivated to participate actively and correctly in the PTC.
-    - **Penalties for Inconsistencies**: If an attestation is found to be inconsistent (e.g., attesting to `PAYLOAD_ABSENT` when the payload was present), penalties are imposed. Both the proposer and the attesters are penalized to deter the inclusion of incorrect or misleading attestations. The penalty for the proposer `proposer_penalty` is notably doubled to prevent any potential collusion between proposers and attesters where they might benefit from including both consistent and inconsistent attestations.
-
-- **Implementation and Justification**
-  - **Avoiding Slashing Conditions**: There are no slashing conditions specifically for PTC attestation equivocations to prevent overly punitive measures that could discourage participation. However, penalties are structured to ensure that there is no net benefit to submitting equivocating attestations.
-  - **Doubling the Proposer Penalty**: The rationale for doubling the penalty for the proposer is to ensure that there is no scenario where both a penalty and a reward would cancel each other out, thus maintaining a deterrent against the inclusion of conflicting attestations.
-
-
-## Honest Validator Behavior
-
-The roles and behaviors of validators are refined, especially for proposers and PTC members, due to the introduction of new mechanics such as fork choice considerations, execution payload validation, and timing of IL. 
-
-**Proposer Responsibilities**
-- **Execution Payload and Inclusion List Preparation**:
-  - Prior to their designated slot, proposers need to select a `SignedExecutionPayloadHeader` from builders and request or construct an `InclusionList`.
-  - These activities can be conducted before the slot begins to ensure readiness and efficiency.
-- **Broadcast Timing**:
-  - Proposers are incentivized to broadcast their IL early to increase the likelihood of their blocks being attested to, thus securing their block's position in the chain.
-
-- **Builder Interaction**:
-  - Validators can act as their own builders (self-building) or may engage with external builders. Direct interactions with builders (off-protocol methods) are encouraged as they may yield the most competitive bids in real-time.
-
-- **Strategic Considerations**:
-  - Due to potential MEV opportunities, proposers might strategically delay choosing or requesting a builder’s bid until the last feasible moment for block broadcasting. This tactic is to MEV from the available transaction pool.
-
-**Head Determination for Proposers**
-- **Basic Principle**: At the start of slot `N`, proposers must determine the head of the chain to propose a new block effectively. This involves evaluating various scenarios like skipped slots, missing payloads, and late payloads, and making a decision based on the most recent valid block data.
-
-**PTC Member Duties**
-- **Payload Timeliness Attestations**:
-  - PTC members are tasked to verify the timeliness of the execution payload for the current slot and cast a `payload_attestation` based on their observations:
-    - `PAYLOAD_PRESENT`: If both a valid consensus block for the current slot and the corresponding execution payload are observed.
-    - `PAYLOAD_WITHHELD`: If a valid consensus block for the current slot is seen along with a `payload_withheld = true` message from the builder.
-    - `PAYLOAD_ABSENT`: If a valid consensus block is seen without the corresponding execution payload.
-    - No attestation is made if no consensus block for the current slot is observed.
-
-- **Attestation Conditions**:
-  - PTC members only import the first consensus block they observe and base their actions on it, ensuring a single, coherent response per slot.
-
-**Constructing Payload Attestations**
-- **Operational Window**:
-  - PTC members prepare to attest approximately 9 seconds into the slot, evaluating whether the execution payloads are timely and accurately synced with the consensus blocks.
-  - This includes assessing whether payloads are withheld correctly and ensuring that their attestation reflects the actual status of payload availability or absence.
-
-**Validator Considerations**
-- Validators must adeptly handle their roles, whether as proposers, PTC members, or general attestors, navigating the intricacies of new ePBS mechanics to maintain network integrity and security. This involves strategic decision-making, timely actions, and adherence to protocol to optimize their influence and rewards within the network.
+### 时隙结束 (End of the Slot)
+
+- 随着时隙的结束，验证者完成了几项关键任务：
+  - **导入与验证**：验证者确保他们已导入并验证了包含列表、共识区块、所有单比特和聚合证明、负载证明以及完整的执行负载。
+  - **评估区块链的新头部**：基于已验证的数据，验证者对链的状态做出关键决策。他们确定该时隙导致以下哪种情况：
+    - **完整区块 (Full Block)**：共识区块和相应的执行负载均已成功导入。
+    - **空区块 (Empty Block)**：共识区块已被导入，但关联的执行负载未按时揭示。
+    - **跳过的时隙 (Skipped Slot)**：在该时隙期间未导入任何共识区块，导致跳过时隙的场景。
+- 分叉选择函数 `get_head` 在考虑了最新的区块提案、负载证明以及任何其他相关信息（例如来自证明和余额的权重）后，确定链的头部。
+- 所有节点根据分叉选择的结果同步其状态，确保整个网络的一致性。这种同步包括应用来自已证明区块和执行负载的所有状态过渡和更新。
+
+## 包含列表时间线 (Inclusion List Timeline)
+
+**Gossip 层检查**：
+- 验证包含列表的时间安排，确保与当前或下一时隙相关。
+- 每个提议者-时隙对被限制在网络上广播一个包含列表，尽管提议者可能会向不同的对等方发送不同的列表。
+- 交易数量必须与摘要计数相匹配，且不能超过 `MAX_TRANSACTIONS_PER_INCLUSION_LIST` 中设置的最大值。
+- 包含列表签名针对提议者的密钥进行验证，确认其计划的时隙。
+
+**风险与缓解**：
+- 在头部改变之前广播下一时隙的包含列表可能会导致可用性问题，尽管该列表仍被认为是可用的。
+
+**on_inclusion_list 处理器**：
+- 充当执行层引擎 API 调用的桥梁，假设相应的信标区块已被处理。
+- 如果信标区块的父区块为空，则任何新的包含列表都会被自动忽略以防止积压。
+
+**信标状态跟踪**：
+- 跟踪最近和之前 IL 的提议者和时隙，以管理履行并在出现新的有效区块时进行更新。
+
+**EL 验证**：
+- 使用当前状态检查交易 `inclusion_list.transactions` 是否有效且可包含。
+- 确保摘要 `inclusion_list.signed_summary.message.summary` 准确列出包含交易的“发送方 (from)”地址。
+- 确保交易的总 gas 限制不超过允许的最大值 `MAX_GAS_PER_INCLUSION_LIST`。
+- 确保列出的账户有足够的资金来支付最大潜在 gas 费用 `(base_fee_per_gas + base_fee_per_gas / BASE_FEE_MAX_CHANGE_DENOMINATOR) * gas_limit`。
+
+## 执行负载的时间线 (Execution Payload's Timeline)
+
+ePBS 系统中执行负载的处理包括分布在 gossip、共识和执行层中的几个关键步骤：
+
+**Gossip 层**：执行负载通过 `execution_payload` 发布/订阅主题共享，并进行关键验证：
+- 确认与负载相关联的信标区块是有效的。
+- 验证构建者索引，并针对信标区块验证负载哈希。
+- 验证构建者的签名。
+
+**共识状态过渡**：在 Gossip 之后，负载通过 `on_execution_payload` 分叉选择处理器进行共识验证：
+- **签名验证**：确保负载签名的完整性。
+- **提现和包含列表验证**：确认提现的正确处理，并遵守信标状态指定的包含列表。
+- **负载一致性和 EL 验证**：检查所有负载元素是否与信标状态承诺一致，并将负载发送到执行层进行进一步验证。
+- **状态更新与验证**：更新信标状态记录并验证新的状态根以确认准确的状态过渡、`latest_block_hash` 和 `latest_full_slot`。
+
+**执行层状态过渡**：执行层扩展其角色以验证 `InclusionListSummary` 的满足情况：
+- **交易与余额验证**：跟踪交易或余额变化中涉及的地址。
+- **包含列表满足度**：确保 `InclusionListSummary` 中的每个地址在负载中都是活跃的，考虑当前和先前负载的交易和余额变化。
+- **特殊情况处理**：管理独特场景，例如由 [EIP-3074](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-3074.md) 启用的交易。
+
+## 负载证明的时间线 (Payload Attestation's Timeline)
+
+**Gossip 层**：负载证明是由 PTC 成员使用 `PAYLOAD_ATTESTATION_MESSAGE` 对象广播的，在传播前进行严格的检查：
+- **当前时隙验证**：仅在 gossip 中传播当前时隙的证明。
+- **负载状态验证**：证明必须具有有效的负载状态才能被传播。
+- **每位成员限一次证明**：每个 PTC 成员仅共享一次证明。
+- **信标区块根存在性**：证明与具有已知信标区块根的时隙相关联。
+- **PTC 成员身份检查**：必须确认验证者是 PTC 的成员。
+- **签名验证**：证明必须具有有效的签名。
+
+**分叉选择处理器**：在通过 Gossip 验证后，负载证明在分叉选择中通过 `on_payload_attestation_message` 处理器进行处理，其中包括：
+- **信标区块验证**：确认关联的信标区块在分叉选择存储中。
+- **PTC 时隙验证**：验证证明者在指定时隙的 PTC 中。
+- **时隙匹配**：检查信标区块是否与证明时隙对应。
+- **当前时隙和签名检查（如果不是来自区块）**：对于 direct broadcasts，验证时隙是当前的并验证签名。
+- **PTC 投票更新**：更新在分叉选择中为给定区块根跟踪的 PTC 投票。
+
+## 信标区块的时间线 (Beacon Block's Timeline)
+
+**Gossip 层**：
+- **初始验证**：`SignedBeaconBlock` 通过 gossip 或 RPC 进入，关键验证侧重于父信标区块的合法性。
+
+**on_block 处理器**：
+- **信标区块验证**：根据两个 parent 元素验证区块：共识层（通过 `block.parent_root`）和派生自 `BeaconBlockBody` 中 `signed_execution_payload_header` 条目的执行层。
+- **BeaconBlockBody 调整**：`BeaconBlockBody` 中的修改包括移除执行负载和 blob KZG 承诺，添加 `signed_execution_payload_header` 以及新的 `payload_attestations`。
+
+**状态过渡**：
+- **修改的函数**：`process_block` 现在针对 ePBS 更改进行调整，包括对提现处理和同步父负载的修改。
+- **提现**：分两个阶段管理；在共识区块处理期间扣除，在执行负载处理期间验证履行。
+- **执行负载头**：验证构建者的签名、资金以及将竞价金额立即转移给提议者，状态调整记录在信标状态中。
+
+**负载证明**：负载证明 `PayloadAttestation` 代表信标区块处理中的一个重要组件，为 PTC 的执行负载增加了一层验证。
+
+- **PTC 委员会形成**
+  - **委员会选择**：`get_ptc` 函数旨在通过从现有的信标委员会中选择验证者来组建 PTC，特别是针对每个委员会列表末尾的验证者来形成 PTC。选择过程确保了 PTC 得到充分的人员配置，同时将对标准信标委员会结构和功能的影响降至最低。
+
+- **处理负载证明**
+  - **证明要求**：负载证明必须属于前一个时隙并与父信标区块根匹配，确保它们及时且准确地引用正确的信标状态。
+  - **激励与惩罚**：
+    - **一致性检查**：检查每个证明与信标状态以确定一致性。一致的证明（例如，当时隙确实为满时证明 `PAYLOAD_PRESENT`）会为提议者和做出证明的验证者带来奖励。这使他们的激励与负载状态的准确和诚实报告保持一致。
+    - **奖励计算**：对于一致的证明，参与标志 `PARTICIPATION_FLAG_WEIGHTS` 会为做出证明的验证者进行设置，并且提议者会收到根据证明者的基础奖励计算的提议者奖励 `proposer_reward`，以确保验证者有动力在 PTC 中积极且正确地参与。
+    - **不一致的惩罚**：如果发现证明不一致（例如，在负载存在时证明 `PAYLOAD_ABSENT`），则会施加惩罚。提议者和证明者都会受到惩罚，以阻止包含错误或误导性的证明。提议者的惩罚 `proposer_penalty` 显著加倍，以防止提议者和证明者之间可能存在的任何潜在串通，在这些串通中，他们可能会从包含一致和不一致的证明中获益。
+
+- **实现与合理性**
+  - **避免罚没条件**：没有专门针对 PTC 证明等价的罚没条件，以防止过度惩罚的措施打消参与积极性。然而，惩罚的结构旨在确保提交等价证明没有净收益。
+  - **提议者惩罚加倍**：将提议者惩罚加倍的理由是确保不存在惩罚和奖励相互抵消的场景，从而维持了对包含冲突证明的威慑。
+
+## 诚实验证者行为 (Honest Validator Behavior)
+
+由于引入了诸如分叉选择考虑、执行负载验证以及 IL 的时机安排等新机制，验证者的角色和行为（特别是对于提议者和 PTC 成员）得到了完善。
+
+**提议者职责**：
+- **执行负载和包含列表准备**：
+  - 在其指定的时隙之前，提议者需要从构建者中选择一个 `SignedExecutionPayloadHeader`，并请求或构建一个 `InclusionList`。
+  - 这些活动可以在时隙开始之前进行，以确保就绪和效率。
+- **广播时机**：
+  - 鼓励提议者尽早广播其 IL，以增加其区块被证明的可能性，从而确保其区块在链中的位置。
+- **构建者交互**：
+  - 验证者可以充当他们自己的构建者（自建），或者可以与外部构建者接洽。鼓励与构建者进行直接交互（协议外方法），因为它们可能会实时产生最具竞争力的竞价。
+- **战略考虑**：
+  - 由于潜在的 MEV 机会，提议者可能会策略性地推迟选择或请求构建者的竞价，直到广播区块的最后可行时刻。这种策略是为了从可用的交易池中提取 MEV。
+
+**提议者的头部确定**：
+- **基本原则**：在时隙 `N` 的开始，提议者必须确定链的头部以有效地提议新区块。这涉及评估各种场景（如跳过的时隙、缺失的负载和迟到的负载），并基于最新的有效区块数据做出决策。
+
+**PTC 成员职责**：
+- **负载时效性证明**：
+  - PTC 成员的任务是验证当前时隙执行负载的时效性，并根据他们的观察投出 `payload_attestation`：
+    - `PAYLOAD_PRESENT`：如果观察到当前时隙的有效共识区块和相应的执行负载。
+    - `PAYLOAD_WITHHELD`：如果看到了当前时隙的有效共识区块，以及来自构建者的 `payload_withheld = true` 消息。
+    - `PAYLOAD_ABSENT`：如果看到了有效共识区块，但没有相应的执行负载。
+    - 如果未观察到当前时隙的共识区块，则不做证明。
+- **证明条件**：
+  - PTC 成员仅导入他们观察到的第一个共识区块，并基于它采取行动，以确保每个时隙有单一、连贯的响应。
+
+**构建负载证明**：
+- **运行窗口**：
+  - PTC 成员准备在大约 9 秒进入时隙时做出证明，评估执行负载是否及时且与共识区块准确同步。
+  - 这包括评估负载是否被正确隐匿，并确保他们的证明反映了负载可用性或缺失的实际状态。
+
+**验证者考虑**：
+- 验证者必须娴熟地处理他们的角色，无论是作为提议者、PTC 成员还是普通证明者，驾驭新 ePBS 机制的复杂性以维护网络的完整性和安全性。这涉及战略决策、及时行动和对协议的遵守，以优化他们在网络中的影响力和奖励。
 
 ## Honest Builder Behavior
 
-**Preparing Multiple Payloads**
-- **Adaptability**: Builders are expected to prepare different payloads for various potential parent heads. This preparation allows them to adapt to changes in the fork choice at the last moment.
-- **Multiple Bids**: Builders can submit multiple bids ahead of their intended slot, increasing their chances of selection by proposers.
+**准备多个负载**：
+- **适应性**：构建者被期望为各种潜在的父区块头部准备不同的负载。这种准备使他们能够在最后一刻适应分叉选择的变化。
+- **多个竞价**：构建者可以在其预定时间段之前提交多个竞价，从而增加被提议者选中的机会。
 
-**Bid Submission Strategy**
-- **Broadcasting Bids**: Builders can submit bids via off-protocol services directly to proposers. This strategy allows builders to continually update and refine their bids without exposing them to the entire network, which could potentially lead to the inclusion of suboptimal payloads.
-- **First Seen Message Rule**: Validators will only gossip the first valid seen message for a particular combination of (builder, slot), which encourages builders to submit their best possible bids early in the process.
+**竞价提交策略**：
+- **广播竞价**：构建者可以通过协议外服务直接向提议者提交竞价。这种策略允许构建者不断更新和完善他们的竞价，而无需将其暴露给整个网络，这可能会导致包含次优负载。
+- **首次看到消息规则**：验证者将仅针对（构建者，时隙）的特定组合传播首次看到的有效消息，这鼓励构建者在流程早期提交其最佳竞价。
 
-**Direct Bid Requests**
-- **Enhanced API Specification**: Introducing direct bid requests through a `SignedBidRequest` mechanism would allow validators to request execution headers directly from builders. This minor modification to the builder API could utilize existing client code and enhance direct interactions between validators and builders.
+**直接竞价请求**：
+- **增强的 API 规范**：通过 `SignedBidRequest` 机制引入直接竞价请求将允许验证者直接向构建者请求执行区块头。对构建者 API 的这种小幅修改可以利用现有的客户端代码，并加强验证者和构建者之间的直接互动。
 
 ```python
 class BidRequest(container):
@@ -401,77 +377,74 @@ class SignedBidRequest(container):
     signature: BLSSignature
 ```
 
-- **Cryptographic Binding**: The direct request mechanism can be designed to cryptographically bind the request to the validator, preventing builders from adjusting their bids based on what others are offering, thereby reducing the risk of collusion and cartelization among builders.
+- **密码学绑定**：直接请求机制可以被设计为将请求与验证者进行密码学绑定，防止构建者根据其他人的报价调整其竞价，从而降低构建者之间串通和卡特尔化（cartelization）的风险。
 
-**Gossip as Fallback**
-- **Fallback Mechanism**: Despite the advantages of direct bid requests, maintaining a global topic for bid gossip provides a crucial fallback. This system supports validators running on lower-end hardware or those who prefer community-driven builders, ensuring they have access to competitive bids.
-- **Anti-Censorship and Anti-Cartel Measures**: By setting a public minimum bid through community-driven builders, the system forces centralized builders to outbid these public offers if they wish to censor certain transactions. This feature serves as a baseline for competition and transparency in bid submission.
-- **Spam Protection**: The global topic can be protected against spam by only allowing the highest value bid received for a given parent block hash to be gossiped, and restricting to one message per builder per slot.
+**Gossip 作为备用**：
+- **备用机制**：尽管直接竞价请求具有优势，但为竞价 Gossip 维持一个全局主题提供了一个关键的备用手段。该系统支持在低端硬件上运行的验证者或那些偏好社区驱动构建者的验证者，确保他们能够获得竞争性竞价。
+- **反审查与反卡特尔措施**：通过社区驱动的构建者设置公共最低竞价，系统强制中心化构建者在希望审查某些交易时出价高于这些公共报价。这一特性作为竞价提交中竞争和透明度的基准。
+- **垃圾邮件保护**：可以通过仅允许针对给定父区块哈希收到的最高价值竞价被 Gossip，并限制每个构建者每个时隙只能发送一条消息来保护全局主题免受垃圾邮件攻击。
 
+## 提议者与构建者交互的安全分析 (Security analysis of proposer and builder interactions)
 
-## Security analysis of proposer and builder interactions
+**构建者揭示安全性 (Builder Reveal Safety)**：
+- **场景**：提议者之间串通，以重组及时揭示其负载的构建者的负载。
+- **结果**：安全设计确保了只要攻击者控制的质押权益不超过特定值（在此示例中最高达 40%），构建者的负载就无法被后续提议者重组。
+- **关键等式**：如果 \(RB > PB\)，则揭示的负载保持安全，其中 \(RB\) 是构建者的揭示助力 (reveal boost)，\(PB\) 是提议者助力 (proposer boost)。
 
-**Builder Reveal Safety**
-- **Scenario**: Collusion between proposers to reorganize the payload of a builder who has revealed their payload timely.
-- **Outcome**: The security design ensures that the builder's payload cannot be reorganized by subsequent proposers as long as the attackers do not control more than a specific threshold of the stake (up to 40% in this example).
-- **Key Equation**: The revealed payload remains secure if \(RB > PB\), where \(RB\) is the builder's reveal boost and \(PB\) is the proposer boost.
+**构建者隐匿安全性 (Builder Withholding Safety)**：
+- **场景**：构建者由于共识区块迟到而决定隐匿负载，旨在避免惩罚。
+- **结果**：如果区块不是链的头部或迟到，则 (区块, 时隙) 投票机制支持构建者在没有惩罚的情况下隐匿负载的决定。
+- **有效安全**：构建者受到保护，免受提议者操纵区块时间以强迫负载揭示的攻击，确保在未满足安全揭示条件时构建者无需付费。
 
-**Builder Withholding Safety**
-- **Scenario**: Builder decides to withhold the payload due to the late arrival of the consensus block, aiming to avoid penalties.
-- **Outcome**: The (block, slot) voting mechanism supports the builder's decision to withhold the payload without penalties if the block is not the head of the chain or arrives late.
-- **Effective Safety**: The builder is safeguarded against attacks where proposers manipulate block timing to force a payload reveal, ensuring the builder is not forced to pay if the conditions for a safe reveal are not met.
+**提议者安全性 (Proposer Safety)**：
+- **场景**：试图通过构建者与下一个提议者之间的协作来重组链。
+- **结果**：分析表明，只要攻击者控制少于 20% 的质押权益，诚实行动且及时揭示其区块的提议者就能够保证被包含在链中。
+- **详细分析**：展示了系统针对事前和事后重组尝试的韧性，维护了诚实提议者区块免受串通和网络控制的完整性。
 
-**Proposer Safety**
-- **Scenario**: Attempts to reorganize the chain through collaboration between builders and the next proposer.
-- **Outcome**: Analysis shows that as long as the attackers control less than 20% of the stake, proposers who act honestly and reveal their blocks timely are guaranteed inclusion on the chain.
-- **Detailed Analysis**: Demonstrates the resilience of the system against both ex-anti and post-anti reorganization attempts, maintaining the integrity of honest proposers' blocks against collusion and network control.
+**通用安全考量**：
+- 所提出的设计通过确保投票仅支持与 PTC 决定一致的链，从而有效地处理不同的负载状态。
+- 包含列表的可用性在确定规范链头部方面发挥着关键作用，通过强调经过验证的包含，增强了账本的完整性。
+- 负载助力（无论是对于揭示还是隐匿）在分叉选择期间调整权重计算中起着关键作用，这可以根据负载的可用性和行动来影响链的重组和稳定性。
 
-**General Security Considerations**
-- The proposed design handles different payload statuses effectively by ensuring that votes only support chains consistent with PTC decisions.
-- Inclusion list availability plays a crucial role in determining the canonical head, enhancing ledger integrity by emphasizing validated inclusions.
-- Payload boosts (both for revealing and withholding) play a critical role in adjusting the weight calculations during fork choice, which can influence chain reorganizations and stability based on payload availability and actions.
+## 分叉选择考量 (Forkchoice Considerations)
 
+ePBS 分叉的引入对分叉选择规则带来了复杂的改变，特别是针对构建者和提议者的安全性。这些更改旨在适应网络延迟和诸如负载隐匿等战略行为。
 
-## Forkchoice Considerations
+**ePBS 分叉选择中的关键概念：**
+- **(区块, 时隙) 投票**：
+  - 此机制确保了如果一个区块迟到，验证者将支持最新的及时区块，而不是迟到的区块。
+  - 一致的是，随着验证者继续支持早期的及时区块，迟到的区块会积累更少的权重。
+- **负载状态处理**：
+  - 负载状态（缺失、为空、为满）影响验证者对链的支持。
+  - 投票支持与 PTC 对负载状态决定一致的链，确保负载根据及时的可用性被包含或排除。
+- **包含列表可用性**：
+  - IL 的存在和验证是至关重要的。验证者可以根据具有完全验证 IL 的最新区块来确定头部。
+  - 这一考虑确保了在适当包含的交易上构建的区块受到青睐，从而增强了链的完整性。
+- **负载助力的安全分析**：
+  - 引入了构建者的揭示助力 (RB) 和隐匿助力 (WB)，根据构建者在揭示或隐匿负载方面的行动对其进行奖励或保护。
+  - 这些助力通过改变权重计算显着影响分叉选择，可能导致基于负载可用性和完整性的重组或链的稳定。
 
-The introduction of the ePBS fork brings sophisticated changes to the forkchoice rules, specifically targeting builder and proposer safety. These changes are designed to accommodate network delays and strategic behaviors like payload withholding.
+**实际例子：**
+- **正常情况 (Happy cases)** 展示了所有区块和负载按时到达并获得完全支持的正常运行。
+- **迟到的区块和负载** 插图说明了验证者将其支持转向早期区块的场景，影响了潜在链分叉之间的权重分配。
+- **负载状态场景** 展示了投票如何根据负载可用性与 PTC 投票一致，从而支持或排除某些区块。
+- **包含列表考量** 突出了这些列表对确定规范头部的影响，特别是在包含数据缺失或迟到的情况下。
 
-**Key Concepts in ePBS Forkchoice:**
+## 资源 (Resources)
 
-- **(Block, Slot) Voting:**
-  - This mechanism ensures that if a block arrives late, validators will support the last timely block instead of the late one.
-  - Consistently, late blocks accumulate less weight as validators continue to support earlier, timely blocks.
-- **Payload Status Handling:**
-  - The status of payloads (missing, empty, full) influences validators' support for chains.
-  - Votes support chains that are consistent with the PTC decisions on payload status, ensuring that payloads are either included or excluded based on timely availability.
-- **Inclusion List Availability:**
-  - The presence and validation of IL are crucial. Validators may base their head determinations on the latest block with a fully validated IL.
-  - This consideration ensures that blocks built on properly included transactions are favored, enhancing the chain integrity.
-- **Security Analysis of Payload Boosts:**
-  - Builder's reveal boost (RB) and withholding boost (WB) are introduced to reward or protect builders based on their actions in revealing or withholding payloads.
-  - These boosts significantly influence the forkchoice by altering the weight calculations, potentially leading to reorganizations or stabilization of the chain based on payload availability and integrity.
+- [ePBS 规范笔记 (ePBS specification notes)](https://hackmd.io/@potuz/rJ9GCnT1C)
+- [没有 Max EB 和 7002 的最小 ePBS (Minimal ePBS without Max EB and 7002)](https://github.com/potuz/consensus-specs/pull/2)
+- [EIP-7251 最大有效余额 (MaxEB) (EIP-7251 Maximum effective balance (MaxEB))](https://eips.ethereum.org/EIPS/eip-7251)
+- [EIP-7002 执行层可触发的提现 (EIP-7002 Execution layer triggerable withdrawals)](https://eips.ethereum.org/EIPS/eip-7002)
+- [epbs - 信标链规范 (epbs - beacon-chain specs)](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/beacon-chain.md)
+- [epbs - 诚实验证者规范 (epbs - honest validator specs)](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/honest-validator-specs)
+- [epbs - 诚实构建者规范 (epbs - honest builder specs)](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/builder.md)
+- [epbs - 引擎 API 规范 (epbs - Engine API specs)](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/engine.md)
+- [epbs - 分叉选择规范 (epbs - fork-choice specs)](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/fork-choice.md)
+- [EIP-7547 包含列表 (EIP-7547 Inclusion Lists)](https://eips.ethereum.org/EIPS/eip-7547)
 
-**Practical Examples:**
-- **Happy cases** show normal operation where all blocks and payloads arrive on time and receive full support.
-- **Late blocks and payloads** illustrate scenarios where validators shift their support to earlier blocks, affecting the weight distribution across potential chain forks.
-- **Payload status scenarios** demonstrate how votes can either support or exclude certain blocks based on payload availability, aligning with PTC votes.
-- **Inclusion list considerations** highlight the impact of these lists on determining the canonical head, especially in cases of missing or late inclusion data.
+## 参考文献 (References)
 
-
-## Resources
-- [ePBS specification notes](https://hackmd.io/@potuz/rJ9GCnT1C)
-- [Minimal ePBS without Max EB and 7002](https://github.com/potuz/consensus-specs/pull/2)
-- [EIP-7251 Maximum effective balance (MaxEB) ](https://eips.ethereum.org/EIPS/eip-7251)
-- [EIP-7002 Execution layer triggerable withdrawals](https://eips.ethereum.org/EIPS/eip-7002)
-- [epbs - beacon-chain specs](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/beacon-chain.md)
-- [epbs - honest validator specs](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/validator.md)
-- [epbs - honest builder specs](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/builder.md)
-- [epbs - Engine API specs](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/engine.md)
-- [epbs - fork-choice specs](https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/fork-choice.md)
-- [EIP-7547 Inclusion Lists](https://eips.ethereum.org/EIPS/eip-7547)
-
-
-## References
 [^1]: https://hackmd.io/@potuz/rJ9GCnT1C
 [^2]: https://github.com/potuz/consensus-specs/pull/2
 [^3]: https://eips.ethereum.org/EIPS/eip-7251
@@ -482,4 +455,4 @@ The introduction of the ePBS fork brings sophisticated changes to the forkchoice
 [^8]: https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/builder.md
 [^9]: https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/engine.md
 [^10]: https://github.com/potuz/consensus-specs/blob/epbs_stripped_out/specs/_features/epbs/fork-choice.md
-[^11]: https://github.com/potuz/consensus-specs/tree/epbs_stripped_out/specs/_features/epbs 
+[^11]: https://github.com/potuz/consensus-specs/tree/epbs_stripped_out/specs/_features/epbs

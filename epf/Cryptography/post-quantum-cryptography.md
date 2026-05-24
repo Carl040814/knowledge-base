@@ -1,141 +1,141 @@
-# Post-Quantum Cryptography
+# 后量子密码学
 
-Classical cryptography safeguards information by leveraging the inherent difficulty of certain mathematical problems. Such group of problems as prime factoring, discrete logarithm, graph isomorphism, and the shortest vector problem etc. fall under the area of mathematical research called the ["Hidden Subgroup Problem (HSP)"](https://en.wikipedia.org/wiki/Hidden_subgroup_problem).
+经典密码学通过利用某些数学问题的固有难度来保护信息安全。这些包括素数分解、离散对数、图同构（graph isomorphism）、最短向量问题（shortest vector problem）等问题，属于称为["隐藏子群问题（Hidden Subgroup Problem, HSP）"](https://en.wikipedia.org/wiki/Hidden_subgroup_problem)的数学研究领域。
 
-In essence, these problems makes determining the structure of a secret subgroup (size, elements) within a large group computationally intractable without the knowledge of a "secret" (private) key. This one-way "trapdoor function" is employed by public-key cryptography algorithms for their security.
+本质上，这些问题使得在没有"秘密"（私有）密钥的情况下，确定一个大群内秘密子群的结构（大小、元素）在计算上不可行。这种单向"陷门函数（trapdoor function）"被公钥密码学算法用于其安全性。
 
-[RSA's](<https://en.wikipedia.org/wiki/RSA_(cryptosystem)>) security rests on the **factoring of large prime numbers**. In contrast, [ECDSA's](/wiki/Cryptography/ecdsa.md) security is based on the elliptic curve **discrete logarithm problem**. Solving either of these hidden subgroup problems becomes exponentially harder as the key size increases, making them computationally infeasible for classical computers to crack. This fundamental difficulty safeguards encrypted data.
+[RSA](<https://en.wikipedia.org/wiki/RSA_(cryptosystem)>) 的安全性依赖于**大素数的因式分解**。相比之下，[ECDSA](/wiki/Cryptography/ecdsa.md) 的安全性基于椭圆曲线**离散对数问题**。随着密钥大小的增加，解决这些隐藏子群问题都呈指数级变得更加困难，使经典计算机在计算上不可行。这种基本难度保护了加密数据。
 
-However, the landscape is shifting.
+然而，格局正在变化。
 
-Quantum computers, harnessing the principles of quantum mechanics, offer novel computational approaches. Certain quantum algorithms can solve these classical cryptographic problems with exponential efficiency compared to their classical counterparts. This newfound capability poses a significant threat to the security of data encrypted with classical cryptography. If large-scale quantum computers are ever built, they will be able to break many of the public-key cryptography currently in use.
+量子计算机利用量子力学原理，提供了新颖的计算方法。某些量子算法可以以指数级效率解决这些经典密码学问题，相较于其经典对手。这种新获得的能力对用经典密码学加密的数据安全构成了重大威胁。如果大规模量子计算机被建造出来，它们将能够破解目前使用的许多公钥密码学。
 
-[Shor's algorithm](https://ieeexplore.ieee.org/document/365700) for integer factorization is the most celebrated application of quantum computing. It factors n-digit integers in a time complexity less than $O(n^3)$, a significant improvement over the best classical algorithms.
+[Shor 算法](https://ieeexplore.ieee.org/document/365700)用于整数因式分解是量子计算最著名的应用。它在小于 $O(n^3)$ 的时间复杂度内对 n 位整数进行因式分解，相较于最佳经典算法有显著改进。
 
-This is where the field of post-quantum cryptography comes in. It aims to develop new algorithms that remain secure even in the presence of powerful quantum computers.
+这就是后量子密码学（post-quantum cryptography）领域出现的背景。它旨在开发即使在强大量子计算机存在的情况下仍然安全的新算法。
 
-## Timeline
+## 时间线
 
-According to the survey done for ["Quantum Threat Timeline Report 2020"](https://globalriskinstitute.org/publication/quantum-threat-timeline-report-2020/) most experts believe that there is <5% threat to the public-key cryptography until 2030. However, it is predicted that the risk substantially increases to about 50% by 2050.
+根据[《2020 年量子威胁时间线报告》](https://globalriskinstitute.org/publication/quantum-threat-timeline-report-2020/)所做的调查，大多数专家认为，到 2030 年公钥密码学的威胁低于 5%。然而，预计到 2050 年风险将大幅增加至约 50%。
 
-Currently, the most [advanced quantum computers](https://en.wikipedia.org/wiki/List_of_quantum_processors) have <2000 physical qubits. Breaking Bitcoin's encryption within an hour (ideal time window) [requires approximately 317 million physical qubits](https://pubs.aip.org/avs/aqs/article/4/1/013801/2835275/The-impact-of-hardware-specifications-on-reaching).
+目前，最[先进的量子计算机](https://en.wikipedia.org/wiki/List_of_quantum_processors)拥有 <2000 个物理量子比特（physical qubits）。在一小时内（理想时间窗口）破解比特币的加密[大约需要 3.17 亿个物理量子比特](https://pubs.aip.org/avs/aqs/article/4/1/013801/2835275/The-impact-of-hardware-specifications-on-reaching)。
 
-Steady progress is being made in quantum research; one survey respondent notes:
+量子研究正在稳步推进；一位调查受访者指出：
 
-> It is not always the case [..] but I find that my predictions are often more pessimistic than what actually happens. I take this as a sign that the research is accelerating.
+> 情况并非总是如此[..]但我发现我的预测往往比实际发生的情况更悲观。我将此视为研究正在加速的迹象。
 
-Note that these predictions are somewhat subjective and might not reflect real progress which is mostly not open to public. Advanced threat actor might have access to powerful quantum computing sooner than public and use strategies like [retrospective decryption](https://en.wikipedia.org/wiki/Harvest_now%2C_decrypt_later).
+请注意，这些预测在某种程度上是主观的，可能无法反映真实的进展，因为大多数进展并未向公众开放。高级威胁行为者可能比公众更早获得强大的量子计算能力，并使用诸如[追溯解密（retrospective decryption）](https://en.wikipedia.org/wiki/Harvest_now%2C_decrypt_later)等策略。
 
-### 2025
+### 2025 年
 
-In Feb 2025, Microsoft announced [a million qubits on a single chip.](https://news.microsoft.com/source/features/innovation/microsofts-majorana-1-chip-carves-new-path-for-quantum-computing/). [Video explanation with context](https://www.youtube.com/watch?v=jwnez8HdN7E). 
+2025 年 2 月，微软宣布[在单个芯片上实现百万量子比特。](https://news.microsoft.com/source/features/innovation/microsofts-majorana-1-chip-carves-new-path-for-quantum-computing/)。[带上下文的视频解释](https://www.youtube.com/watch?v=jwnez8HdN7E)。
 
-## Post-Quantum risk to Ethereum
+## 以太坊的后量子风险
 
-Ethereum accounts are secured by a two-tier cryptosystem. A private key is used to generate a public key through [elliptic curve multiplication](/wiki/Cryptography/ecdsa.md). This public key is hashed using [keccak256](/wiki/Cryptography/keccak256.md) to derive the Ethereum address.
+以太坊账户由两层密码系统保护。私钥通过[椭圆曲线乘法](/wiki/Cryptography/ecdsa.md)生成公钥。该公钥使用 [keccak256](/wiki/Cryptography/keccak256.md) 进行哈希以派生以太坊地址。
 
-The immediate post-quantum threat is the ability to reverse elliptic curve multiplication securing ECDSA thus exposing the private key. This makes all externally owned accounts (EOA) vulnerable to a quantum attack. Assuming the hashing function that maps a public-key to an ethereum address is still safe, extracting its private key is still challenging but vulnerable nonetheless.
+直接的后量子威胁是能够逆转保护 ECDSA 的椭圆曲线乘法，从而暴露私钥。这使得所有外部拥有账户（externally owned accounts, EOA）容易受到量子攻击。假设将公钥映射到以太坊地址的哈希函数仍然安全，提取其私钥仍然具有挑战性，但仍然是脆弱的。
 
-In practice, most users’ private keys are themselves the result of a bunch of hash calculations using [BIP-32](https://github.com/bitcoin/bips/blob/b3701faef2bdb98a0d7ace4eedbeefa2da4c89ed/bip-0032.mediawiki), which generates each address through a series of hashes starting from a master seed phrase. This makes revealing the private key even more computationally expensive.
+在实践中，大多数用户的私钥本身是一系列哈希计算的结果，使用 [BIP-32](https://github.com/bitcoin/bips/blob/b3701faef2bdb98a0d7ace4eedbeefa2da4c89ed/bip-0032.mediawiki)，它通过从主种子短语开始的一系列哈希生成每个地址。这使得揭示私钥的计算成本更加昂贵。
 
-EthResearch has an [ongoing proposal](https://ethresear.ch/t/how-to-hard-fork-to-save-most-users-funds-in-a-quantum-emergency/18901) for a hard-fork in the event of a post-quantum emergency, the key actions being:
+EthResearch 有一个[正在进行的提案](https://ethresear.ch/t/how-to-hard-fork-to-save-most-users-funds-in-a-quantum-emergency/18901)，用于在后量子紧急情况下进行硬分叉，关键行动包括：
 
-1. Revert all blocks after the first block where it’s clear that large-scale theft is happening
-2. Traditional EOA-based transactions are disabled
-3. A new transaction type is added to allow transactions from smart contract wallets (eg. part of [RIP-7560](https://ethereum-magicians.org/t/rip-7560-native-account-abstraction/16664)), if this is not available already
-4. A new transaction type or opcode is added by which you can provide a STARK proof which proves knowledge of (i) a private preimage x, (ii) a hash function ID `1 <= i < k` from a list of k approved hash functions, and (iii) a public address A, such that `keccak(priv_to_pub(hashes[i](x)))[12:] = A`. The STARK also accepts as a public input the hash of a new piece of validation code for that account. If the proof passes, your account’s code is switched over to the new validation code, and you will be able to use it as a smart contract wallet from that point forward.
+1. 回滚在明显发生大规模盗窃的第一个区块之后的所有区块
+2. 传统的基于 EOA 的交易被禁用
+3. 添加新的交易类型以允许来自智能合约钱包的交易（例如 [RIP-7560](https://ethereum-magicians.org/t/rip-7560-native-account-abstraction/16664) 的一部分），如果尚不可用
+4. 添加一种新的交易类型或操作码，通过它你可以提供一个 STARK 证明，证明你知道 (i) 一个私有原像 x，(ii) 来自 k 个已批准哈希函数列表中的一个哈希函数 ID `1 <= i < k`，以及 (iii) 一个公共地址 A，使得 `keccak(priv_to_pub(hashes[i](x)))[12:] = A`。STARK 还接受该账户新验证代码片段的哈希作为公共输入。如果证明通过，你的账户代码将被切换到新的验证代码，并且从那时起你将能够将其作为智能合约钱包使用。
 
-The approach, however, is not perfect. Some users will still loose funds since not all blocks from the event of an attack will be reverted. This is because it is incredibly hard to reliably detect a quantum attack on the network as [domothy highlights](https://ethresear.ch/t/how-to-hard-fork-to-save-most-users-funds-in-a-quantum-emergency/18901/14):
+然而，这种方法并不完美。一些用户仍会损失资金，因为并非所有攻击事件中的区块都会被回滚。这是因为如 [domothy 所强调的](https://ethresear.ch/t/how-to-hard-fork-to-save-most-users-funds-in-a-quantum-emergency/18901/14)，可靠地检测网络上的量子攻击极其困难：
 
-> Picture a single large exchange wallet being drained by a quantum computer. Everyone would naturally assume it was a security failure of some kind on the exchange’s end. Or if a smart wallet relying on discrete log assumption gets drained, a smart contract bug/exploit would be the first thing that comes to mind. Or the quantum-enabled attacker avoids high profile targets altogether and slowly steals funds from various large EOAs, and we never even know a quantum attack took place.
+> 想象一个大型交易所钱包被量子计算机耗尽。每个人自然都会认为这是交易所端某种安全故障。或者如果一个依赖离散对数假设的智能钱包被耗尽，智能合约 bug/漏洞利用会是首先想到的。或者量子能力的攻击者完全避开高价值目标，慢慢从各种大型 EOA 窃取资金，而我们甚至永远不知道量子攻击发生了。
 
-Further, KZG commitment schemes powering [EIP-4844](/wiki/research/scaling/core-changes/eip-4844.md) would also need to be upgraded to prevent fraudulent commits.
+此外，支撑 [EIP-4844](/wiki/research/scaling/core-changes/eip-4844.md) 的 KZG 承诺方案也需要升级以防止欺诈性承诺。
 
-## Research
+## 研究
 
-Post-quantum cryptography is an active area of research. Several organizations are working on prototyping, development, and standardization of new post-quantum algorithms.
+后量子密码学是一个活跃的研究领域。多个组织正在致力于新后量子算法的原型设计、开发和标准化。
 
-## NIST Post-Quantum Cryptography
+## NIST 后量子密码学
 
-The [NIST Post-Quantum Cryptography standardization](https://csrc.nist.gov/projects/post-quantum-cryptography) conducted a multi-year international competition to evaluate and standardize quantum-resistant cryptographic algorithms. In August 2024, NIST published the first set of finalized **PQC standards** as Federal Information Processing Standards (FIPS):
+[NIST 后量子密码学标准化](https://csrc.nist.gov/projects/post-quantum-cryptography)进行了一项多年国际竞赛，以评估和标准化抗量子密码学算法。2024 年 8 月，NIST 发布了首批最终确定的 **PQC 标准**，作为联邦信息处理标准（Federal Information Processing Standards, FIPS）：
 
-### Published Standards (August 2024)
+### 已发布标准（2024 年 8 月）
 
-**Key encapsulation mechanism:**
+**密钥封装机制（Key encapsulation mechanism）：**
 
-- **ML-KEM** ([FIPS 203](https://doi.org/10.6028/NIST.FIPS.203)) derived from CRYSTALS-Kyber. A **key-encapsulation mechanism (KEM)**: a set of three algorithms (KeyGen, Encaps, Decaps) that establish a shared secret key over a public channel. Based on the **Module Learning With Errors (MLWE)** problem.
+- **ML-KEM** ([FIPS 203](https://doi.org/10.6028/NIST.FIPS.203)) 源自 CRYSTALS-Kyber。一种**密钥封装机制（KEM）**：一组三个算法（KeyGen、Encaps、Decaps），通过公开通道建立共享密钥。基于**模学习带错误（Module Learning With Errors, MLWE）**问题。
 
-| Parameter Set | Security Strength | Security Category |
+| 参数集 | 安全强度 | 安全类别 |
 |---|---|---|
-| ML-KEM-512 | 128 bits | 1 |
-| ML-KEM-768 | 192 bits | 3 |
-| ML-KEM-1024 | 256 bits | 5 |
+| ML-KEM-512 | 128 位 | 1 |
+| ML-KEM-768 | 192 位 | 3 |
+| ML-KEM-1024 | 256 位 | 5 |
 
-**Digital signature algorithms:**
+**数字签名算法：**
 
-- **ML-DSA** ([FIPS 204](https://doi.org/10.6028/NIST.FIPS.204)) derived from CRYSTALS-Dilithium. Lattice-based digital signature algorithm.
+- **ML-DSA** ([FIPS 204](https://doi.org/10.6028/NIST.FIPS.204)) 源自 CRYSTALS-Dilithium。基于格的数字签名算法。
 
-| Parameter Set | Security Strength | Security Category |
+| 参数集 | 安全强度 | 安全类别 |
 |---|---|---|
-| ML-DSA-44 | 128 bits | 2 |
-| ML-DSA-65 | 192 bits | 3 |
-| ML-DSA-87 | 256 bits | 5 |
+| ML-DSA-44 | 128 位 | 2 |
+| ML-DSA-65 | 192 位 | 3 |
+| ML-DSA-87 | 256 位 | 5 |
 
-- **SLH-DSA** ([FIPS 205](https://doi.org/10.6028/NIST.FIPS.205)) derived from SPHINCS+. NIST's stateless hash-based digital signature standard.
+- **SLH-DSA** ([FIPS 205](https://doi.org/10.6028/NIST.FIPS.205)) 源自 SPHINCS+。NIST 的无状态基于哈希的数字签名标准。
 
-  It is constructed from three well-studied components:
-  - **WOTS+** (Winternitz One Time Signature Plus), one time signing primitive
-  - **XMSS** (eXtended Merkle Signature Scheme), multi-time scheme built on WOTS+
-  - **FORS** (Forest of Random Subsets), few time scheme for signing message digests
+  它由三个经过充分研究的组件构建：
+  - **WOTS+**（Winternitz 一次性签名增强版），一次性签名原语
+  - **XMSS**（扩展 Merkle 签名方案），基于 WOTS+ 构建的多次方案
+  - **FORS**（随机子集森林），用于签名消息摘要的少量次数方案
 
-  Unlike ML-DSA, SLH-DSA requires **no number-theoretic hardness assumptions**. Security depends only on standard hash-function properties (preimage resistance and related properties), making it resistant to quantum attacks without any algebraic structure that Shor’s algorithm could exploit.
+  与 ML-DSA 不同，SLH-DSA 不需要**基于数论的困难假设**。安全性仅依赖于标准哈希函数属性（原像抗性和相关属性），使其能够抵抗量子攻击，而没有 Shor 算法可以利用的任何代数结构。
 
-  Each security level offers two variants:
-  - `s` = smaller signatures, slower signing
-  - `f` = larger signatures, faster signing
+  每个安全级别提供两种变体：
+  - `s` = 更小的签名，较慢的签名速度
+  - `f` = 更大的签名，较快的签名速度
 
-| Parameter Set                          | Security Category | Signature Size |
+| 参数集                          | 安全类别 | 签名大小 |
 |----------------------------------------|-------------------|----------------|
-| SLH-DSA-SHA2-128s / SLH-DSA-SHAKE-128s | 1                 | 7,856 bytes    |
-| SLH-DSA-SHA2-128f / SLH-DSA-SHAKE-128f | 1                 | 17,088 bytes   |
-| SLH-DSA-SHA2-192s / SLH-DSA-SHAKE-192s | 3                 | 16,224 bytes   |
-| SLH-DSA-SHA2-192f / SLH-DSA-SHAKE-192f | 3                 | 35,664 bytes   |
-| SLH-DSA-SHA2-256s / SLH-DSA-SHAKE-256s | 5                 | 29,792 bytes   |
-| SLH-DSA-SHA2-256f / SLH-DSA-SHAKE-256f | 5                 | 49,856 bytes   |
+| SLH-DSA-SHA2-128s / SLH-DSA-SHAKE-128s | 1                 | 7,856 字节    |
+| SLH-DSA-SHA2-128f / SLH-DSA-SHAKE-128f | 1                 | 17,088 字节   |
+| SLH-DSA-SHA2-192s / SLH-DSA-SHAKE-192s | 3                 | 16,224 字节   |
+| SLH-DSA-SHA2-192f / SLH-DSA-SHAKE-192f | 3                 | 35,664 字节   |
+| SLH-DSA-SHA2-256s / SLH-DSA-SHAKE-256s | 5                 | 29,792 字节   |
+| SLH-DSA-SHA2-256f / SLH-DSA-SHAKE-256f | 5                 | 49,856 字节   |
 
-The SHA2 and SHAKE variants differ only in the internal hash-function instantiation (SHA-2 family vs SHAKE from FIPS 202), not in security level or signature structure.
+SHA2 和 SHAKE 变体仅在内部哈希函数实例化上不同（SHA-2 系列 vs FIPS 202 中的 SHAKE），安全级别或签名结构没有区别。
 
-- **FN-DSA** (forthcoming as [FIPS 206](https://csrc.nist.gov/presentations/2025/fips-206-fn-dsa-falcon)) derived from FALCON. Full name: **Fast-Fourier Transform over NTRU-Lattice-Based Digital Signature Algorithm**. A lattice-based scheme in the Hash-Then-Sign paradigm, signing produces a lattice point close to a target derived from a randomized message hash, using **FFT** and an **LDL tree** for discrete Gaussian sampling. This gives FN-DSA significantly smaller signatures and public keys than ML-DSA, making it suited for bandwidth-constrained environments such as certificate chains or protocols with strict size limits.
+- **FN-DSA**（即将作为 [FIPS 206](https://csrc.nist.gov/presentations/2025/fips-206-fn-dsa-falcon)）源自 FALCON。全名：**基于 NTRU 格的快速傅里叶变换数字签名算法（Fast-Fourier Transform over NTRU-Lattice-Based Digital Signature Algorithm）**。一种 Hash-Then-Sign 范式的基于格的方案，签名产生一个接近从随机化消息哈希派生的目标的格点，使用 **FFT** 和 **LDL 树**进行离散高斯采样。这使得 FN-DSA 的签名和公钥显著小于 ML-DSA，适合带宽受限的环境，如证书链或具有严格大小限制的协议。
   
-NIST's ["Status Report on the Fourth Round of the NIST Post-Quantum Cryptography Standardization Process"](https://nvlpubs.nist.gov/nistpubs/ir/2025/NIST.IR.8545.pdf) (March 2025) summarizes the ongoing fourth round.
+NIST 的[《NIST 后量子密码学标准化过程第四轮状态报告》](https://nvlpubs.nist.gov/nistpubs/ir/2025/NIST.IR.8545.pdf)（2025 年 3 月）总结了正在进行的第四轮。
 
 
-### Post-Quantum Cryptography Alliance
+### 后量子密码学联盟
 
-[Post-Quantum Cryptography Alliance (PQCA)](https://pqca.org/), an open and collaborative initiative by [linux foundation](https://www.linuxfoundation.org/press/announcing-the-post-quantum-cryptography-alliance-pqca) to drive the advancement and adoption of post-quantum cryptography.
+[后量子密码学联盟（Post-Quantum Cryptography Alliance, PQCA）](https://pqca.org/)是由[Linux 基金会](https://www.linuxfoundation.org/press/announcing-the-post-quantum-cryptography-alliance-pqca)发起的一个开放协作倡议，旨在推动后量子密码学的进步和采用。
 
-[The Open Quantum Safe (OQS)](https://openquantumsafe.org/) project under this initiative is an open-source project that aims to support the transition to quantum-resistant cryptography.
+该倡议下的[开放量子安全（The Open Quantum Safe, OQS）](https://openquantumsafe.org/)项目是一个开源项目，旨在支持向抗量子密码学的过渡。
 
-### The Crypto Forum Research Group
+### Crypto Forum Research Group
 
-The [Crypto Forum Research Group](https://datatracker.ietf.org/rg/cfrg/about/) within the Internet Engineering Task Force has standardized the stateful hash-based signature scheme ["XMSS: eXtended Merkle Signature Scheme."](https://datatracker.ietf.org/doc/rfc8391/)
+互联网工程任务组（Internet Engineering Task Force）内的 [Crypto Forum Research Group](https://datatracker.ietf.org/rg/cfrg/about/) 已标准化了基于状态哈希的签名方案 ["XMSS: eXtended Merkle Signature Scheme"](https://datatracker.ietf.org/doc/rfc8391/)。
 
-## Production usage
+## 生产使用
 
-Following pilot projects and research initiatives are exploring PQC usage in production:
+以下试点项目和研究计划正在探索 PQC 在生产中的使用：
 
-- [Anchor Vault](https://chromewebstore.google.com/detail/omifklijimcjhfiojhodcnfihkljeali) is a chrome plugin allows adding a quantum-resistant proof using Lamport's signature for securing ERC tokens.
-- Signal has implemented ["Post-Quantum Extended Diffie-Hellman"](https://signal.org/docs/specifications/pqxdh/#introduction) in production for key agreement protocol.
-- Chromium started supporting ["Hybrid Kyber KEM"](https://blog.chromium.org/2023/08/protecting-chrome-traffic-with-hybrid.html) to protect data in transit.
-- Apple has implemented [PQ3](https://security.apple.com/blog/imessage-pq3/) to protect iMessage against key compromise from a quantum attack.
+- [Anchor Vault](https://chromewebstore.google.com/detail/omifklijimcjhfiojhodcnfihkljeali) 是一个 Chrome 插件，允许使用 Lamport 签名为保护 ERC 代币添加抗量子证明。
+- Signal 已在生产中实现了 ["Post-Quantum Extended Diffie-Hellman"](https://signal.org/docs/specifications/pqxdh/#introduction) 用于密钥协商协议。
+- Chromium 开始支持 ["Hybrid Kyber KEM"](https://blog.chromium.org/2023/08/protecting-chrome-traffic-with-hybrid.html) 以保护传输中的数据。
+- Apple 实现了 [PQ3](https://security.apple.com/blog/imessage-pq3/) 以保护 iMessage 免受量子攻击的密钥泄露。
 
-## Resources
+## 资源
 
-- 📝 Daniel J. Bernstein and et al, ["Introduction to post-quantum cryptography"](https://pqcrypto.org/www.springer.com/cda/content/document/cda_downloaddocument/9783540887010-c1.pdf)
+- 📝 Daniel J. Bernstein 等, ["Introduction to post-quantum cryptography"](https://pqcrypto.org/www.springer.com/cda/content/document/cda_downloaddocument/9783540887010-c1.pdf)
 - 📝 Wikipedia, ["Quantum algorithm."](https://en.wikipedia.org/wiki/Quantum_algorithm)
 - 📝 P.W. Shor, ["Algorithms for quantum computation: discrete logarithms and factoring."](https://ieeexplore.ieee.org/document/365700)
 - 📝 NIST, ["Post-Quantum Cryptography."](https://csrc.nist.gov/projects/post-quantum-cryptography)
-- 📝 ETHResearch, ["How to hard-fork to save most users’ funds in a quantum emergency."](https://ethresear.ch/t/how-to-hard-fork-to-save-most-users-funds-in-a-quantum-emergency/18901)
+- 📝 ETHResearch, ["How to hard-fork to save most users' funds in a quantum emergency."](https://ethresear.ch/t/how-to-hard-fork-to-save-most-users-funds-in-a-quantum-emergency/18901)
 - 📝 ETHResearch, ["ETHResearch: Post-Quantum"](https://ethresear.ch/tag/post-quantum)
 - 📝 Vitalik Buterin, ["STARKs, Part I: Proofs with Polynomials."](https://vitalik.eth.limo/general/2017/11/09/starks_part_1.html)
 - 📝 Wikipedia, ["Lamport's Signature."](https://en.wikipedia.org/wiki/Lamport_signature)

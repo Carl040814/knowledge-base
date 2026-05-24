@@ -1,20 +1,20 @@
-# Core development 
+# 核心开发 (Core development)
 
-> :warning: This article is a [stub](https://en.wikipedia.org/wiki/Wikipedia:Stub), help the wiki by [contributing](/contributing.md) and expanding it.
+> :warning: 本文是一个待完善的草稿 (stub)，欢迎通过 [做出贡献](/contributing.md) 并对其进行扩展来帮助维基。
 
-The work on core protocol specification, implementation and testing is commonly referred to as core development. Core devs are contributors the client software, its validation and related tooling for building the protocol, all domains covered in this wiki.
+在核心协议规范、实现和测试方面的工作通常被称为核心开发 (core development)。核心开发者 (core devs) 是指对客户端软件 (client software)、其验证以及构建协议的相关工具做出贡献的人，这也是本维基涵盖的所有领域。
 
-There are many implementation of both [consensus](/wiki/CL/cl-clients.md) and [execution](/wiki/EL/el-clients.md) layer developed by various independent teams. Together with teams working on research, testing and other infrastructure, core developers are maintaining the base technology used by everyone building on Ethereum.
+有许多由各种独立团队开发的[共识层 (consensus layer)](/wiki/CL/cl-clients.md) 和 [执行层 (execution layer)](/wiki/EL/el-clients.md) 实现。与致力于研究、测试和其他基础设施的团队一起，核心开发者正在维护着以太坊 (Ethereum) 上每个构建者所使用的底层技术。
 
-![Space Core Devs](../../images/space-core-devs.png)
+![Space Core Devs](https://epf.wiki/images/space-core-devs.png)
 
-[Hsiao-Wei Wang](https://github.com/hwwhww) shared the graphic above in her presentation _[A Journey of an Ethereum Core Dev/Researcher”](https://www.youtube.com/watch?v=0lBrd2_fPPU)_ she gave at ETHGlobal Tokyo in April 2023. The graphic symbolizes the connection between a space station and the efforts involved from various teams to bring it to life.
+Hsiao-Wei Wang 在她在 2023 年 4 月举办的 ETHGlobal 东京大会上所做的演讲——《以太坊核心开发/研究员之旅》(“A Journey of an Ethereum Core Dev/Researcher”) 中分享了上图。该图象征着空间站与各个团队为使其诞生而付出的努力之间的联系。
 
-Teams working on separate clients are distributed across different organizations, companies or non-profits. They implement the same specification in different languages with various features and performance profiles. The [client diversity](https://ethereum.org/developers/docs/nodes-and-clients/client-diversity) is a fundamental principle embraced by Ethereum. The range of different clients can ensure stability and security of the network while keeping the core development decentralized and open to everyone. 
+开发独立客户端的团队分布在不同的组织、公司或非营利机构中。他们用不同的语言实现相同的规范，并具有各种功能和性能特征。客户端多样性 (client diversity) 是以太坊拥抱的一项基本原则。各种不同客户端的范围可以确保网络的稳定性和安全性，同时保持核心开发的去中心化并向所有人开放。
 
-Although different teams come from different organization, they all work together and collaborate on improving the whole network. Progress is achieved through discussions in public channels, mainly carried out in weekly meetings. These calls are public and tracked in [project management repo](https://github.com/ethereum/pm), including ACD - Execution and Consensus Layer calls, various "Breakout Room" and working group calls. Outside of calls, discussions are held in the Ethereum R&D Discord channel, Eth Magicians forum and EthResearch forum. 
+尽管不同的团队来自不同的组织，但他们都在齐心协力并共同合作以改善整个网络。通过在公共渠道中的讨论取得进展，主要在每周会议中进行。这些会议是公开的，并在 [项目管理代码库 (project management repo)](https://github.com/ethereum/pm) 中进行跟踪，包括 ACD（全体核心开发者会议，包括执行层和共识层会议）、各种“分组讨论会议 (Breakout Room)”和工作组会议。在会议之外，讨论会在以太坊研发 Discord 频道 (Ethereum R&D Discord channel)、以太坊魔术师论坛 (Eth Magicians forum) 和以太坊研究论坛 (EthResearch forum) 中进行。
 
-# Appendix
+# 附录 (Appendix)
 
 [A Day in the Life of a Dev: Ethereum’s Justin Florentine](https://www.coindesk.com/consensus-magazine/2023/02/22/a-day-in-the-life-of-a-dev-ethereums-justin-florentine/)
 
