@@ -2,7 +2,7 @@
 
 > 来源：[AI × Web3 School Handbook — Bridge](https://aiweb3.school/zh/handbook/)
 >
-> Bridge 层把 AI 和 Web3 真正交叉在一起。已学 5/15 章。
+> Bridge 层把 AI 和 Web3 真正交叉在一起。15/15 章全部完成 ✅
 
 ## 章节索引
 
@@ -13,14 +13,14 @@
 | Web3 工具调用 | [web3-tool-use.md](web3-tool-use.md) | ✅ |
 | Agent 工作流 | [agent-workflow.md](agent-workflow.md) | ✅ |
 | Agent 钱包 | [agent-wallet.md](agent-wallet.md) | ✅ |
-| 机器支付 | — | 待学习 |
-| 结算与托管 | — | 待学习 |
-| Agent 身份 | — | 待学习 |
-| Agent 信任与声誉 | — | 待学习 |
-| AI 预言机 | — | 待学习 |
-| 可验证 AI | — | 待学习 |
-| AI 安全 | — | 待学习 |
-| AI 隐私 | — | 待学习 |
-| AI 主权 | — | 待学习 |
-| 治理 AI | — | 待学习 |
-| 去中心化 AI | — | 待学习 |
+| 机器支付 | [machine-payment.md](machine-payment.md) | ✅ |
+| 结算与托管 | [settlement-and-escrow.md](settlement-and-escrow.md) | ✅ |
+| Agent 身份 | [agent-identity.md](agent-identity.md) | ✅ |
+| Agent 信任与声誉 | [agent-trust-and-reputation.md](agent-trust-and-reputation.md) | ✅ |
+| AI 预言机 | [ai-oracle.md](ai-oracle.md) | ✅ |
+| 可验证 AI | [verifiable-ai.md](verifiable-ai.md) | ✅ |
+| AI 安全 | [ai-security.md](ai-security.md) | ✅ |
+| AI 隐私 | [ai-privacy.md](ai-privacy.md) | ✅ |
+| AI 主权 | [ai-sovereignty.md](ai-sovereignty.md) | ✅ |
+| 治理 AI | [governance-ai.md](governance-ai.md) | ✅ |
+| 去中心化 AI | [decentralized-ai.md](decentralized-ai.md) | ✅ |

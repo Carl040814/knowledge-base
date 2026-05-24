@@ -8,7 +8,8 @@
 
 - [AI / 机器学习](ai/index.md) — 12 章
 - [Web3 / 区块链](web3/index.md) — 10 章
-- [AI × Web3 Bridge](bridge/index.md) — 1/15 章
+- [AI × Web3 Bridge](bridge/index.md) — 15/15 章 ✅
+- [前沿探索](frontier/index.md) — 6 章
 - [编程 / 开发](programming/index.md)
 - [工具 / 效率](tools/index.md)
 - [语言学习](language/index.md)
@@ -57,7 +58,20 @@
 | Web3 工具调用 | [bridge/web3-tool-use.md](bridge/web3-tool-use.md) | RPC/Contract Read/Write、Wallet/DeFi Tool、权限分层 |
 | Agent 工作流 | [bridge/agent-workflow.md](bridge/agent-workflow.md) | Task Graph、State Machine、Human-in-the-loop、Trace |
 | Agent 钱包 | [bridge/agent-wallet.md](bridge/agent-wallet.md) | Smart Account、Session Key、Policy、Guard、Simulation |
-| 其余 10 章 | [bridge/index.md](bridge/index.md) | 机器支付、Agent 身份、AI Oracle… 待学习 |
+| AI 主权 | [bridge/ai-sovereignty.md](bridge/ai-sovereignty.md) | User Control、d/acc、CROPS、Local-first AI |
+| 治理 AI | [bridge/governance-ai.md](bridge/governance-ai.md) | Proposal Summary、Contribution Graph、Plurality |
+| 去中心化 AI | [bridge/decentralized-ai.md](bridge/decentralized-ai.md) | Model/Data/Compute Market、Inference Network、Settlement |
+
+## 前沿探索
+
+| 章节 | 文件 | 说明 |
+|------|------|------|
+| 智能体商业 | [frontier/agentic-commerce.md](frontier/agentic-commerce.md) | Agent 购买 API：Payment Intent、Budget Control、链上收据 |
+| 开发工具 | [frontier/dev-tooling.md](frontier/dev-tooling.md) | Docs-to-Agent、Contract Reader、Transaction Interpreter |
+| 钱包与权限 | [frontier/wallet-permission.md](frontier/wallet-permission.md) | AI Wallet UX、Permission Policy、Session Key、Guard |
+| AI 安全 | [frontier/ai-security.md](frontier/ai-security.md) | Threat Model、Prompt Injection、Tool Isolation、Key Isolation |
+| 治理 | [frontier/governance.md](frontier/governance.md) | Proposal Summarizer、Contribution Tracker、Source-preserving |
+| 开放赛道 | [frontier/open-track.md](frontier/open-track.md) | AI-native Wallet、Cross-track、New Protocol |
 
 ## 编程 / 开发
 
